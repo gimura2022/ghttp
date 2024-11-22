@@ -30,7 +30,7 @@ int main(int argc, char* argv[])
 				.responder = handler,
 				.request_type = HTTPRQT_GET,
 				.use_regex = false
-			}, 1);	
+			}, 1, NULL);	
 
 	return 0;
 }

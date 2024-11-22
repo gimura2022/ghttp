@@ -62,6 +62,6 @@ struct ghttp__server_data {
 struct ghttp__server_data ghttp__get_default_server_data(void);
 
 void ghttp__start_server(struct ghttp__server_data server_data, struct ghttp__path_responder* responders,
-		size_t responder_count); 
+		size_t responder_count, ghttp__respoder_t not_found_responder);
 
 #endif

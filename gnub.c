@@ -6,16 +6,23 @@
 #define gnub_impl
 #include "gnub.h"
 
-static const char* cflags     = "-std=gnu99 -Wall -Wpedantic";
-static const char* cflags_rel = "-O3";
-static const char* cflags_deb = "-O0 -g";
+static const char* cflags     = " -std=c99 -Wall -Wpedantic ";
+static const char* cflags_rel = " -O3 ";
+static const char* cflags_deb = " -O0 -g ";
 
-static const char* ldflags = "-fPIC";
+static const char* cppflags = " -I include ";
 
-static const char* cppflags = "-I include";
+static const char* libname = "ghttp";
 
 static char* cc = "cc";
 static char* ar = "ar";
+static char* prefix = "/usr/";
+
+static char cflags_out[512] = {0};
+static char ldflags_out[512] = {0};
+static char cppflags_out[512] = {0};
+
+static char*** argv_ptr;
 
 static void die(const char* msg, ...)
 {
@@ -29,35 +36,10 @@ static void die(const char* msg, ...)
 	exit(-1);
 }
 
-static void recompile_self(char* argv[])
+static void compile(void)
 {
-	struct gnub__cmd_arr cmds = {0};
-
-	char output_file[32] = {0};
-	strcpy(output_file, argv[0]);
-	strcat(output_file, ".new");
-
-	gnub__append_command(&cmds, cc, cflags_deb, cppflags, "-o", output_file, "gnub.c");
-
-	if (!gnub__recompile_self(&cmds, output_file, argv)) 
-		die("Error: can't recompile build script\n");
-
-	gnub__free_commands(&cmds);
-}
-
-int main(int argc, char* argv[])
-{
-	cc = getenv("CC") == NULL ? cc : getenv("CC");
-	ar = getenv("AR") == NULL ? ar : getenv("AR");
-
-	recompile_self(argv);
-
-	const char* cflags_add = cflags_rel;
-	if (argc == 2) {
-		if (strcmp(argv[1], "release") == 0) cflags_add = cflags_rel;
-		else if (strcmp(argv[1], "debug") == 0) cflags_add = cflags_deb;
-		else die("Error: unrecognized option %s\n", argv[1]);
-	}
+	strcat(cflags_out, cflags);
+	strcat(cppflags_out, cppflags);
 
 	struct gnub__cmd_arr compile_commands = {0};
 
@@ -66,14 +48,52 @@ int main(int argc, char* argv[])
 	gnub__find_c_files("src/", objects, &count);
 
 	for (size_t i = 0; i < count; i++) {
-		gnub__append_command(&compile_commands, cc, cflags, cflags_add, cppflags, "-c", "-o",
-				objects[i][1], objects[i][0]);
+		gnub__append_command(&compile_commands, cc, cflags_out, cppflags_out, "-c", "-o",
+				objects[i][1], objects[i][0], ldflags_out);
 	}
 
-	gnub__create_lib(&compile_commands, ar, cc, "ghttp", ldflags, objects, count);
+	gnub__create_lib(&compile_commands, ar, cc, libname, ldflags_out, objects, count);
 
 	gnub__execute_commands(&compile_commands);
 	gnub__free_commands(&compile_commands);
+}
+
+static void debug(void)
+{
+	strcpy(cflags_out, cflags_deb);
+	compile();
+}
+
+static void release(void)
+{
+	strcpy(cflags_out, cflags_rel);
+	compile();
+}
+
+static void install(void)
+{
+	struct gnub__cmd_arr arr = {0};
+	gnub__install_lib(&arr, libname, prefix, 0, "./include/");
+	gnub__execute_commands(&arr);
+	gnub__free_commands(&arr);
+}
+
+int main(int argc, char* argv[])
+{
+	argv_ptr = &argv;
+
+	cc     = getenv("CC")     == NULL ? cc : getenv("CC");
+	ar     = getenv("AR")     == NULL ? ar : getenv("AR");
+	prefix = getenv("PREFIX") == NULL ? prefix : getenv("PREFIX");
+
+	gnub__recompile_self(argv);
+
+	gnub__add_target("release", release);
+	gnub__add_target("debug", debug);
+	gnub__add_target("install", install);
+
+	const char* default_targets[] = { "release", "install" };
+	gnub__run_targets(argc, argv, default_targets, array_lenght(default_targets));
 
 	return 0;
 }

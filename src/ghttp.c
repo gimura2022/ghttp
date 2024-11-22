@@ -30,6 +30,7 @@ struct ghttp__reciver_args {
 	struct ghttp__server_context* server_context;
 	struct ghttp__path_responder* responders;
 	size_t responder_count;
+	ghttp__respoder_t not_found;
 };
 
 static void die(const char* msg)
@@ -72,7 +73,7 @@ static void warnf(const char* fmt, ...)
 static void* ghttp__reciver(struct ghttp__reciver_args* args);
 
 void ghttp__start_server(struct ghttp__server_data server_data, struct ghttp__path_responder* responders,
-		size_t responder_count)
+		size_t responder_count, ghttp__respoder_t not_found_responder)
 {
 	int server_fd;
 	struct sockaddr_in address;
@@ -100,9 +101,10 @@ void ghttp__start_server(struct ghttp__server_data server_data, struct ghttp__pa
 		
 		if ((http_rec_args->client_fd = accept(server_fd, (struct sockaddr*) &client_addr,
 						&client_addr_len)) < 0) continue; 
-		http_rec_args->server_context = &context;
-		http_rec_args->responders = responders;
+		http_rec_args->server_context  = &context;
+		http_rec_args->responders      = responders;
 		http_rec_args->responder_count = responder_count;
+		http_rec_args->not_found       = not_found_responder;
 
 		pthread_t thread_id;
 		pthread_create(&thread_id, NULL, (void *(*)(void*)) ghttp__reciver, (void*) http_rec_args);	
@@ -256,14 +258,13 @@ static void* ghttp__reciver(struct ghttp__reciver_args* args)
 
 	if (recv_size <= 0) goto done;
 
-	printf("%s\n", (char*) buf);
-
 	struct ghttp__request request;
 	if (!ghttp__parse_request(&request, buf)) {
 		warn("can't parse http request");
 		goto done;
 	}
 
+	bool found = false;
 	for (size_t i = 0; i < args->responder_count; i++) {
 		const struct ghttp__path_responder* responder = &args->responders[i];
 		bool is_avalidable = true;
@@ -292,6 +293,8 @@ static void* ghttp__reciver(struct ghttp__reciver_args* args)
 		}
 
 		if (is_avalidable) {
+			found = true;
+
 			const struct ghttp__responce responce =
 				responder->responder(args->server_context, request);
 
@@ -299,10 +302,19 @@ static void* ghttp__reciver(struct ghttp__reciver_args* args)
 			size_t size = 0;
 			ghttp__create_responce(&responce, buf_out, &size);
 
-			printf("%s\n", buf_out);
-
 			send(args->client_fd, buf_out, size, 0);
 		}
+	}
+
+	if (!found && args->not_found != NULL) {
+		const struct ghttp__responce responce =
+			args->not_found(args->server_context, request);
+
+		char buf_out[HTTP_BUFFER_SIZE] = {0};
+		size_t size = 0;
+		ghttp__create_responce(&responce, buf_out, &size);
+
+		send(args->client_fd, buf_out, size, 0);
 	}
 
 done:
