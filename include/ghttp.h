@@ -1,8 +1,8 @@
 #ifndef _http_server_h
 #define _http_server_h
 
-#include <cstddef>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #define GHTTP_MAX_NOT_PARSED_HEADERS 128
 
@@ -83,8 +83,8 @@ struct ghttp__responce {
 	size_t not_parssed_headers_count;
 };
 
-void ghttp__create_responce(char* buf, const size_t buf_size, const struct ghttp__responce* responce);
-void ghttp__create_request(char* buf, const size_t buf_size, const struct ghttp__request* request);
+void ghttp__create_responce(char* buf, const size_t buf_size, struct ghttp__responce* responce);
+void ghttp__create_request(char* buf, const size_t buf_size, struct ghttp__request* request);
 
 bool ghttp__parse_responce(const char* buf, const size_t buf_size, struct ghttp__responce* responce);
 bool ghttp__parse_request(const char *buf, const size_t buf_size, struct ghttp__request* request);

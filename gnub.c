@@ -18,8 +18,8 @@ static char* cc = "cc";
 static char* ar = "ar";
 static char* prefix = "/usr/";
 
-static char cflags_out[512] = {0};
-static char ldflags_out[512] = {0};
+static char cflags_out[512]   = {0};
+static char ldflags_out[512]  = {0};
 static char cppflags_out[512] = {0};
 
 static char*** argv_ptr;
@@ -61,13 +61,11 @@ static void compile(void)
 static void debug(void)
 {
 	strcpy(cflags_out, cflags_deb);
-	compile();
 }
 
 static void release(void)
 {
 	strcpy(cflags_out, cflags_rel);
-	compile();
 }
 
 static void install(void)
@@ -90,9 +88,10 @@ int main(int argc, char* argv[])
 
 	gnub__add_target("release", release);
 	gnub__add_target("debug", debug);
+	gnub__add_target("compile", compile);
 	gnub__add_target("install", install);
 
-	const char* default_targets[] = { "release", "install" };
+	const char* default_targets[] = { "release", "compile", "install" };
 	gnub__run_targets(argc, argv, default_targets, array_lenght(default_targets));
 
 	return 0;
