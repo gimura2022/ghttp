@@ -43,7 +43,6 @@ static const char* www_authenticate_name   = "WWW-Authenticate";
 static void ghttp__add_header(char* buf, const struct ghttp__header* header);
 static void ghttp__create_general_headers(char* buf, struct ghttp__general_headers* headers);
 
-
 static void ghttp__create_responce_headers(char* buf, struct ghttp__responce_headers* headers)
 {
 	set_if_null(headers->age.name                , age_name);
@@ -61,6 +60,8 @@ static void ghttp__create_responce_headers(char* buf, struct ghttp__responce_hea
 	ghttp__add_header(buf, &headers->range);
 	ghttp__add_header(buf, &headers->server);
 	ghttp__add_header(buf, &headers->www_authenticate);
+
+	ghttp__create_general_headers(buf, &headers->general_headers);
 }
 
 static void ghttp__add_header(char* buf, const struct ghttp__header* header)
