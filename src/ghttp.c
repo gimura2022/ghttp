@@ -162,13 +162,13 @@ static int ghttp__parse_content(struct ghttp__content* content, const char* cont
 	char buf[HTTP_BUFFER_SIZE] = {0};
 	strcpy(buf, content_str);
 
-	char* save_ptr = buf;
-	strtok_r(save_ptr, BRBR, &save_ptr);
+	char* save_ptr;
+	strtok_r(buf, BRBR, &save_ptr);
 
 	bool content_type_has = false;
 	bool content_size_has = false;
-	for (char* s = strtok_r(save_ptr, BRBR, &save_ptr);
-			s != NULL && strcmp(s, "") != 0; s = strtok_r(save_ptr, BRBR, &save_ptr)) {
+	for (char* s = strtok_r(NULL, BRBR, &save_ptr);
+			s != NULL && strcmp(s, "") != 0; s = strtok_r(NULL, BRBR, &save_ptr)) {
 		char name[64]  = {0};
 		char val[1024] = {0};
 		if (!ghttp__parse_field(s, name, val)) return 1;
@@ -197,9 +197,9 @@ static bool ghttp__parse_request(struct ghttp__request* request, const char* req
 	char buf[HTTP_BUFFER_SIZE]  = {0};
 	strcpy(buf, request_str);
 
-	char* save_ptr = buf;
+	char* save_ptr;
+	char* s = strtok_r(buf, BRBR, &save_ptr);
 
-	const char* s = strtok_r(save_ptr, BRBR, &save_ptr);
 	if (sscanf(s, "%s %s HTTP/1.1", temp, request->url) != 2) return false;
 	if (!ghttp__parse_request_type(&request->type, temp))     return false;	
 
@@ -208,8 +208,8 @@ static bool ghttp__parse_request(struct ghttp__request* request, const char* req
 	request->content.h = !(content_get_code == 2);
 
 	bool host_has = false;
-	for (s = strtok_r(save_ptr, BRBR, &save_ptr);
-			s != NULL && strcmp(s, "") != 0; s = strtok_r(save_ptr, BRBR, &save_ptr)) {
+	for (s = strtok_r(NULL, BRBR, &save_ptr);
+			s != NULL && strcmp(s, "") != 0; s = strtok_r(NULL, BRBR, &save_ptr)) {
 		char name[64]  = {0};
 		char val[1024] = {0};
 		if (!ghttp__parse_field(s, name, val)) return false;
@@ -258,7 +258,7 @@ static void* ghttp__reciver(struct ghttp__reciver_args* args)
 
 	if (recv_size <= 0) goto done;
 
-	struct ghttp__request request;
+	struct ghttp__request request = {0};
 	if (!ghttp__parse_request(&request, buf)) {
 		warn("can't parse http request");
 		goto done;

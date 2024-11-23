@@ -6,11 +6,13 @@
 #define gnub_impl
 #include "gnub.h"
 
-static const char* cflags     = " -std=c99 -Wall -Wpedantic ";
+static const char* cflags     = " -std=gnu99 -Wall -Wpedantic ";
 static const char* cflags_rel = " -O3 ";
 static const char* cflags_deb = " -O0 -g ";
 
 static const char* cppflags = " -I include ";
+
+static const char* ldflags = " -fPIC -lc ";
 
 static const char* libname = "ghttp";
 
@@ -40,6 +42,7 @@ static void compile(void)
 {
 	strcat(cflags_out, cflags);
 	strcat(cppflags_out, cppflags);
+	strcat(ldflags_out, ldflags);
 
 	struct gnub__cmd_arr compile_commands = {0};
 
