@@ -15,7 +15,7 @@ static struct ghttp__responce handler(struct ghttp__server_context* ctx, struct 
 	responce.content.h = true;
 	strcpy(responce.content.d.content_type, "text/html");
 
-	strcpy(responce.content.d.content, "Hello, world!");
+	strcpy(responce.content.d.content, "main(){puts(\"Hello, world!\");}");
 	responce.content.d.content_size = strlen(responce.content.d.content);
 
 	strcpy(responce.server, "Gimura Server");

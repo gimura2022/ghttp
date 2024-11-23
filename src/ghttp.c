@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <netdb.h>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -227,7 +228,7 @@ static void ghttp__create_request(const struct ghttp__request* request, char* bu
 {
 }
 
-static struct ghttp__responce ghttp__parse_responce(const char* responce_str)
+static bool ghttp__parse_responce(struct ghttp__responce* responce, const char* responce_str)
 {
 }
 
@@ -321,4 +322,39 @@ done:
 	close(args->client_fd);
 	free(buf);
 	free(args);
+}
+
+bool ghttp__send_request(char* host, int port, const struct ghttp__request* request,
+		struct ghttp__responce* responce)
+{
+	bool return_code = false;
+
+	int fd, server;
+	struct sockaddr_in serv_addr = {0};
+	char buf[HTTP_BUFFER_SIZE]   = {0};
+
+	if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+		return false;
+
+	if ((server = gethostname(host, strlen(host))) < 0)
+		goto done;
+
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_port   = htons(port);
+
+	if (connect(fd, (struct sockaddr*) &serv_addr, sizeof(serv_addr)) < 0)
+		goto done;
+
+	size_t out_size;
+	ghttp__create_request(request, buf, &out_size);
+	send(fd, buf, out_size, 0);
+	memset(buf, '\0', sizeof(buf));
+
+	size_t recv_size = recv(fd, buf, sizeof(buf), 0);
+	if (!ghttp__parse_responce(responce, buf))
+		goto done;
+
+done:
+	close(fd);
+	return return_code;
 }
