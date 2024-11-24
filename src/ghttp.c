@@ -191,6 +191,8 @@ static void* ghttp__reciver(struct ghttp__reciver_args* args)
 
 		send(args->client_fd, buf_out, size, 0);
 
+		ghttp__free_responce(&responce);
+
 		ghttp__free(buf_out);
 	}
 
