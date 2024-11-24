@@ -6,6 +6,8 @@
 #include <ghttp.h>
 
 #define BRBN "\r\n"
+#define GHTTP_MAX_URL 1024 * 2
+#define GHTTP_MAX_TYPE 128
 
 static bool parse_general_headers(const char* line, struct ghttp__general_headers* headers);
 static bool parse_request_headers(const char* line, struct ghttp__request_headers* headers);
@@ -23,6 +25,9 @@ bool ghttp__parse_request(struct ghttp__request* request, const char* str)
 
 	char* save_ptr;
 	char* s = strtok_r(buf, BRBN, &save_ptr);
+
+	request->type = ghttp__malloc(GHTTP_MAX_TYPE);
+	request->url  = ghttp__malloc(GHTTP_MAX_URL);
 
 	if (sscanf(s, "%s %s HTTP/1.1", request->type, request->url) != 2)
 		goto done;
