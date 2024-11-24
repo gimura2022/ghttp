@@ -93,6 +93,40 @@ void ghttp__create_responce(const struct ghttp__responce* responce, char* str, s
 	add_content(responce->content, str, out_size, &responce->headers.general.content_length);
 }
 
+#define free_if_non_null(x) ({ if (x != NULL) ghttp__free(x); })
+#define free_header_with_headers(x, header) ({ free_if_non_null(header.x.name); \
+		free_if_non_null(header.x.value); })
+
+void ghttp__free_request(const struct ghttp__request* request)
+{
+	free_if_non_null(request->content);
+	free_if_non_null(request->type);
+	free_if_non_null(request->url);
+
+#	define add_header(x, y) free_header_with_headers(x, request->headers);
+	request_headers
+#	undef add_header
+#	define add_header(x, y) free_header_with_headers(x, request->headers.general);
+	general_headers
+#	undef add_header
+}
+
+void ghttp__free_responce(const struct ghttp__responce* responce)
+{
+	free_if_non_null(responce->content);
+	free_if_non_null(responce->responce_str);
+	
+#	define add_header(x, y) free_header_with_headers(x, responce->headers);
+	responce_headers
+#	undef add_header
+#	define add_header(x, y) free_header_with_headers(x, responce->headers.general);
+	general_headers
+#	undef add_header
+}
+
+#undef free_if_non_null
+#undef free_header_with_headers
+
 static void add_header_to_buf(const char* name, const struct ghttp__header* header, char* str);
 
 static void add_general_headers(const struct ghttp__general_headers* headers, char* str)

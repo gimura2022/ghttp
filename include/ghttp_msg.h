@@ -65,4 +65,7 @@ bool ghttp__parse_responce(struct ghttp__responce* responce, const char* str);
 void ghttp__create_request(const struct ghttp__request* request, char* str, size_t* out_size);
 void ghttp__create_responce(const struct ghttp__responce* responce, char* str, size_t* out_size);
 
+void ghttp__free_request(const struct ghttp__request* request);
+void ghttp__free_responce(const struct ghttp__responce* responce);
+
 #endif
