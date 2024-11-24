@@ -196,6 +196,15 @@ static bool parse_request_headers(const char* line, struct ghttp__request_header
 	return true;
 }
 
+static bool parse_responce_headers(const char* line, struct ghttp__responce_headers* headers)
+{
+#	define add_header(x, y) if (!parse_header(line, y, &headers->x)) return false;
+	responce_headers
+#	undef add_header
+
+	return true;
+}
+
 static bool parse_header(const char* line, const char* name, struct ghttp__header* header)
 {
 	bool return_value = false;
