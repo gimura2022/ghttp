@@ -276,6 +276,7 @@ static bool ghttp__create_request(const struct ghttp__request* request, char* bu
 
 static bool ghttp__parse_responce(struct ghttp__responce* responce, const char* responce_str)
 {
+	return true;
 }
 
 static void ghttp__create_responce(const struct ghttp__responce* responce, char* buf, size_t* size)
@@ -300,7 +301,7 @@ static void ghttp__create_responce(const struct ghttp__responce* responce, char*
 
 static void* ghttp__reciver(struct ghttp__reciver_args* args)
 {
-	void* buf = malloc(HTTP_BUFFER_SIZE); 
+	char buf[HTTP_BUFFER_SIZE];
 	ssize_t recv_size = recv(args->client_fd, buf, HTTP_BUFFER_SIZE, 0);
 
 	if (recv_size <= 0) goto done;
@@ -366,8 +367,9 @@ static void* ghttp__reciver(struct ghttp__reciver_args* args)
 
 done:
 	close(args->client_fd);
-	free(buf);
 	free(args);
+
+	return NULL;
 }
 
 bool ghttp__send_request(char* host, int port, const struct ghttp__request* request,
