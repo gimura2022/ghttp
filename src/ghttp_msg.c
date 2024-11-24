@@ -33,7 +33,7 @@ bool ghttp__parse_request(struct ghttp__request* request, const char* str)
 		goto done;
 
 	for (s = strtok_r(NULL, BRBN, &save_ptr); 
-			strcmp(s, "") != 0 && s != NULL; s = strtok_r(NULL, BRBN, &save_ptr)) {
+			s != NULL && strcmp(s, "") != 0; s = strtok_r(NULL, BRBN, &save_ptr)) {
 		if (!parse_general_headers(s, &request->headers.general)) goto done;
 		if (!parse_request_headers(s, &request->headers)) goto done;
 	}
