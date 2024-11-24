@@ -113,10 +113,34 @@ void ghttp__start_server(struct ghttp__server_data server_data, struct ghttp__pa
 	}
 }
 
-static bool ghttp__parse_request_type(enum ghttp__request_type* type, const char* str) {
+static bool ghttp__parse_request_type(enum ghttp__request_type* type, const char* str)
+{
 	if (strcmp(str, "GET") == 0) 	   *type = HTTPRQT_GET;
 	else if (strcmp(str, "POST") == 0) *type = HTTPRQT_POST;
 	else goto fail;
+
+	return true;
+fail:
+	return false;
+}
+
+static bool ghttp__create_request_type(const enum ghttp__request_type* type, const char** str)
+{
+	static const char* get_name  = "GET";
+	static const char* post_name = "POST";
+
+	switch (*type) {
+	case HTTPRQT_GET:
+		*str = get_name;
+		break;
+
+	case HTTPRQT_POST:
+		*str = post_name;
+		break;
+
+	default:
+		goto fail;
+	}
 
 	return true;
 fail:
@@ -224,8 +248,30 @@ static bool ghttp__parse_request(struct ghttp__request* request, const char* req
 	return host_has;
 }
 
-static void ghttp__create_request(const struct ghttp__request* request, char* buf, size_t* size)
+static bool ghttp__create_request(const struct ghttp__request* request, char* buf, size_t* size)
 {
+	size_t out_size = 0;
+
+	const char* request_type;
+	if (!ghttp__create_request_type(&request->type, &request_type))
+		return false;
+
+	sprintf(buf, "%s %s HTTP/1.1" BRBR, request_type, request->url);
+	
+	ghttp__add_field(buf, "Host", request->host);
+	if (request->content.h) ghttp__create_content_fields(&request->content.d, buf);
+
+	strcat(buf, BRBR);
+	out_size += strlen(buf);
+
+	if (request->content.h) {
+		memcpy(buf + out_size, request->content.d.content, request->content.d.content_size);
+		out_size += request->content.d.content_size;
+	}
+
+	*size = out_size;
+
+	return true;
 }
 
 static bool ghttp__parse_responce(struct ghttp__responce* responce, const char* responce_str)
