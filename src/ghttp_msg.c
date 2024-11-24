@@ -93,9 +93,9 @@ void ghttp__create_responce(const struct ghttp__responce* responce, char* str, s
 	add_content(responce->content, str, out_size, &responce->headers.general.content_length);
 }
 
-#define free_if_non_null(x) ({ if (x != NULL) ghttp__free(x); })
-#define free_header_with_headers(x, header) ({ free_if_non_null(header.x.name); \
-		free_if_non_null(header.x.value); })
+#define free_if_non_null(x) if (x != NULL) ghttp__free(x);
+#define free_header_with_headers(x, header) free_if_non_null(header.x.name); \
+		free_if_non_null(header.x.value);
 
 void ghttp__free_request(const struct ghttp__request* request)
 {
