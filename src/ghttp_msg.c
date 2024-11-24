@@ -180,16 +180,20 @@ static bool parse_header(const char* line, const char* name, struct ghttp__heade
 
 static bool parse_general_headers(const char* line, struct ghttp__general_headers* headers)
 {
-#	define add_header(x, y) parse_header(line, y, &headers->x);
+#	define add_header(x, y) if (!parse_header(line, y, &headers->x)) return false;
 	general_headers
 #	undef add_header
+
+	return true;
 }
 
 static bool parse_request_headers(const char* line, struct ghttp__request_headers* headers)
 {
-#	define add_header(x, y) parse_header(line, y, &headers->x);
+#	define add_header(x, y) if (!parse_header(line, y, &headers->x)) return false;
 	request_headers
 #	undef add_header
+
+	return true;
 }
 
 static bool parse_header(const char* line, const char* name, struct ghttp__header* header)
