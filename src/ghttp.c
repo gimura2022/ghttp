@@ -71,6 +71,15 @@ static void warnf(const char* fmt, ...)
 	warn(buf);
 }
 
+ghttp__malloc_t ghttp__malloc;
+ghttp__free_t ghttp__free;
+
+void ghttp__init(ghttp__malloc_t allocator, ghttp__free_t deallocator)
+{
+	ghttp__malloc = allocator;
+	ghttp__free   = deallocator;
+}
+
 static void* ghttp__reciver(struct ghttp__reciver_args* args);
 
 void ghttp__start_server(struct ghttp__server_data server_data, struct ghttp__path_responder* responders,

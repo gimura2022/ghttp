@@ -13,8 +13,6 @@
 #define GHTTP_MAX_CONTENT_TYPE 1024
 #define HTTP_BUFFER_SIZE 1024 * 64 
 
-
-
 struct ghttp__server_context {
 	bool runned;	
 };
@@ -31,6 +29,14 @@ struct ghttp__path_responder {
 struct ghttp__server_data {
 	uint16_t port;	
 };
+
+typedef void* (*ghttp__malloc_t)(size_t);
+typedef void (*ghttp__free_t)(void*);
+
+extern ghttp__malloc_t ghttp__malloc;
+extern ghttp__free_t ghttp__free;
+
+void ghttp__init(ghttp__malloc_t allocator, ghttp__free_t deallocator);
 
 struct ghttp__server_data ghttp__get_default_server_data(void);
 
