@@ -5,7 +5,7 @@
 #include <stdbool.h>
 
 #define general_headers \
-	add_headers(content_size, "Content-Size") \
+	add_headers(content_type, "Content-Type") \
 	add_headers(content_length, "Content-Length")
 
 #define request_headers \
