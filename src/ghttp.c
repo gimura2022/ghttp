@@ -126,7 +126,9 @@ void ghttp__start_server(struct ghttp__server_data server_data, struct ghttp__pa
 
 static void* ghttp__reciver(struct ghttp__reciver_args* args)
 {
-	char* buf         = ghttp__malloc(GHTTP_BUFFER_SIZE);
+	char* buf = ghttp__malloc(GHTTP_BUFFER_SIZE);
+	memset(buf, '\0', GHTTP_BUFFER_SIZE);
+
 	ssize_t recv_size = recv(args->client_fd, buf, GHTTP_BUFFER_SIZE, 0);
 
 	if (recv_size <= 0) goto done;
