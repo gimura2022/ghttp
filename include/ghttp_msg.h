@@ -5,14 +5,14 @@
 #include <stdbool.h>
 
 #define general_headers \
-	add_headers(content_type, "Content-Type") \
-	add_headers(content_length, "Content-Length")
+	add_header(content_type, "Content-Type") \
+	add_header(content_length, "Content-Length")
 
 #define request_headers \
-	add_headers(host, "Host")
+	add_header(host, "Host")
 
 #define responce_headers \
-	add_headers(server, "Server")
+	add_header(server, "Server")
 
 struct ghttp__header {
 	char* name;
@@ -20,23 +20,23 @@ struct ghttp__header {
 };
 
 struct ghttp__general_headers {
-#	define add_headers(x, y) struct ghttp__header x;
+#	define add_header(x, y) struct ghttp__header x;
 	general_headers
-#	undef add_headers
+#	undef add_header
 };
 
 struct ghttp__request_headers {
-#	define add_headers(x, y) struct ghttp__header x;
+#	define add_header(x, y) struct ghttp__header x;
 	request_headers
-#	undef add_headers
+#	undef add_header
 	
 	struct ghttp__general_headers general;
 };
 
 struct ghttp__responce_headers {
-#	define add_headers(x, y) struct ghttp__header x;
+#	define add_header(x, y) struct ghttp__header x;
 	responce_headers
-#	undef add_headers
+#	undef add_header
 	
 	struct ghttp__general_headers general;
 };

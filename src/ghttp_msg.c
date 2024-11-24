@@ -131,21 +131,21 @@ static void add_header_to_buf(const char* name, const struct ghttp__header* head
 
 static void add_general_headers(const struct ghttp__general_headers* headers, char* str)
 {
-#	define add_header(x, y) add_header_to_buf(y, &headers.x, str);
+#	define add_header(x, y) add_header_to_buf(y, &headers->x, str);
 	general_headers
 #	undef add_header
 }
 
 static void add_request_headers(const struct ghttp__request_headers* headers, char* str)
 {
-#	define add_header(x, y) add_header_to_buf(y, &headers.x, str);
+#	define add_header(x, y) add_header_to_buf(y, &headers->x, str);
 	request_headers
 #	undef add_header
 }
 
 static void add_responce_headers(const struct ghttp__responce_headers* headers, char* str)
 {
-#	define add_header(x, y) add_header_to_buf(y, &headers.x, str);
+#	define add_header(x, y) add_header_to_buf(y, &headers->x, str);
 	responce_headers
 #	undef add_header
 }
@@ -180,14 +180,14 @@ static bool parse_header(const char* line, const char* name, struct ghttp__heade
 
 static bool parse_general_headers(const char* line, struct ghttp__general_headers* headers)
 {
-#	define add_header(x, y) parse_header(line, y, &headers.x);
+#	define add_header(x, y) parse_header(line, y, &headers->x);
 	general_headers
 #	undef add_header
 }
 
 static bool parse_request_headers(const char* line, struct ghttp__request_headers* headers)
 {
-#	define add_header(x, y) parse_header(line, y, &headers.x);
+#	define add_header(x, y) parse_header(line, y, &headers->x);
 	request_headers
 #	undef add_header
 }
