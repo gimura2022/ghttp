@@ -6,23 +6,18 @@
 #include <stdbool.h>
 #include <sys/types.h>
 
-#define GHTTP_MAX_URL 1024
-#define GHTTP_MAX_HOST 1024
-#define GHTTP_MAX_RESPONCE_STR 1024
-#define GHTTP_MAX_SERVER 512
-#define GHTTP_MAX_CONTENT_TYPE 1024
-#define HTTP_BUFFER_SIZE 1024 * 64 
+#include <ghttp_msg.h>
 
 struct ghttp__server_context {
 	bool runned;	
 };
 
-typedef struct ghttp__responce (*ghttp__respoder_t)(struct ghttp__server_context*, struct ghttp__request);
+typedef struct ghttp__responce (*ghttp__respoder_t)(struct ghttp__server_context*, struct ghttp__request*);
 
 struct ghttp__path_responder {
 	const char* path;
+	const char* request_type;
 	const ghttp__respoder_t responder;
-	const enum ghttp__request_type request_type;
 	const bool use_regex;
 };
 
@@ -38,12 +33,10 @@ extern ghttp__free_t ghttp__free;
 
 void ghttp__init(ghttp__malloc_t allocator, ghttp__free_t deallocator);
 
-struct ghttp__server_data ghttp__get_default_server_data(void);
-
 void ghttp__start_server(struct ghttp__server_data server_data, struct ghttp__path_responder* responders,
 		size_t responder_count, ghttp__respoder_t not_found_responder);
 
-bool ghttp__send_request(const char* host, int port, const struct ghttp__request* request,
+bool ghttp__send_request(char* host, int port, const struct ghttp__request* request,
 		struct ghttp__responce* responce);
 
 #endif
