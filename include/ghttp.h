@@ -31,7 +31,7 @@ typedef void (*ghttp__free_t)(void*);
 extern ghttp__malloc_t ghttp__malloc;
 extern ghttp__free_t ghttp__free;
 
-void ghttp__init(ghttp__malloc_t allocator, ghttp__free_t deallocator);
+void ghttp__init(ghttp__malloc_t allocator, ghttp__free_t deallocator, struct glog__logger* logger);
 
 void ghttp__start_server(struct ghttp__server_data server_data, struct ghttp__path_responder* responders,
 		size_t responder_count, ghttp__respoder_t not_found_responder);

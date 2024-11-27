@@ -1,5 +1,6 @@
 #include <ghttp.h>
 #include <ghttp_msg.h>
+#include <glog.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,7 +35,10 @@ static struct ghttp__responce handler(struct ghttp__server_context* ctx, struct 
 
 int main(int argc, char* argv[])
 {
-	ghttp__init(malloc, free);
+	struct glog__logger http_logger = {0};
+	glog__logger_from_prefix(&http_logger, "ghttp");
+
+	ghttp__init(malloc, free, &http_logger);
 
 	ghttp__start_server((struct ghttp__server_data) {
 				.port = 8080

@@ -15,6 +15,8 @@
 #include <netinet/in.h>
 #include <threads.h>
 
+#include <glog.h>
+
 #include <ghttp.h>
 #include <ghttp_msg.h>
 
@@ -35,50 +37,16 @@ struct ghttp__reciver_args {
 	ghttp__respoder_t not_found;
 };
 
-static void die(const char* msg)
-{
-	printf("Error: %s\n", msg);
-	exit(1);
-}
-
-static void warn(const char* msg)
-{
-	printf("Warn: %s\n", msg);
-}
-
-static void dief(const char* fmt, ...)
-{
-	va_list	args;
-	va_start(args, fmt);
-
-	char buf[GHTTP_BUFFER_SIZE] = {0};
-	vsprintf(buf, fmt, args);
-
-	va_end(args);
-
-	die(buf);
-}
-
-static void warnf(const char* fmt, ...)
-{
-	va_list	args;
-	va_start(args, fmt);
-
-	char buf[GHTTP_BUFFER_SIZE] = {0};
-	vsprintf(buf, fmt, args);
-
-	va_end(args);
-
-	warn(buf);
-}
-
 ghttp__malloc_t ghttp__malloc;
 ghttp__free_t ghttp__free;
 
-void ghttp__init(ghttp__malloc_t allocator, ghttp__free_t deallocator)
+static struct glog__logger* logger; 
+
+void ghttp__init(ghttp__malloc_t allocator, ghttp__free_t deallocator, struct glog__logger* logger)
 {
 	ghttp__malloc = allocator;
 	ghttp__free   = deallocator;
+	logger        = logger;
 }
 
 static void* ghttp__reciver(struct ghttp__reciver_args* args);
@@ -86,20 +54,22 @@ static void* ghttp__reciver(struct ghttp__reciver_args* args);
 void ghttp__start_server(struct ghttp__server_data server_data, struct ghttp__path_responder* responders,
 		size_t responder_count, ghttp__respoder_t not_found_responder)
 {
+	glog__debug(logger, "starting server");
+
 	int server_fd;
 	struct sockaddr_in address;
 
 	if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-		die("socket failed");
+		glog__die(logger, "socket faled\n");
 
 	address.sin_family = AF_INET;
 	address.sin_addr.s_addr = INADDR_ANY;
 	address.sin_port = htons(server_data.port);
 
 	if (bind(server_fd, (struct sockaddr*) &address, sizeof(address)) < 0)
-		die("bind failed");
+		glog__die(logger, "bind faled\n");
 	if (listen(server_fd, 3) < 0)
-		die("listen failed");
+		glog__die(logger, "listen faled\n");
 
 	struct ghttp__server_context context = {
 		.runned = true
@@ -135,7 +105,7 @@ static void* ghttp__reciver(struct ghttp__reciver_args* args)
 
 	struct ghttp__request request = {0};
 	if (!ghttp__parse_request(&request, buf)) {
-		warn("can't parse http request");
+		glog__error(logger, "can't parse http_request");
 		goto done;
 	}
 
