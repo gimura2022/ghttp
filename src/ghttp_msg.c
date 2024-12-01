@@ -24,6 +24,11 @@ enum {
 	TOK_OPTIONS,
 	TOK_TRACE,
 	TOK_PATCH,
+
+	TOK_BRBN,
+	TOK_HTTP_VER,
+
+	TOK_ANY_TEXT,
 };
 
 #define text_compare_checker(x, y) static bool x(const char* s) { return !strcmp(y, s); }
@@ -38,6 +43,11 @@ text_compare_checker(connect_tok_checker , "CONNECT")
 text_compare_checker(options_tok_checker , "OPTIONS")
 text_compare_checker(trace_tok_checker   , "TRACE")
 text_compare_checker(patch_tok_checker   , "PATCH")
+
+text_compare_checker(brbn_tok_checker     , BRBN);
+text_compare_checker(http_ver_tok_checker , "HTTP/1.1");
+
+static bool any_text_checker(const char* s) { return true; }
 
 static struct glog__logger glex_logger = {0};
 static struct glex__token_def token_defs[] = {
@@ -63,6 +73,11 @@ static struct glex__token_def token_defs[] = {
 	const_text_tok_def(TOK_TRACE   , trace_tok_checker)
 	const_text_tok_def(TOK_PATCH   , patch_tok_checker)
 
+	const_text_tok_def(TOK_BRBN     , brbn_tok_checker)
+	const_text_tok_def(TOK_HTTP_VER , http_ver_tok_checker)
+
+	const_text_tok_def(TOK_ANY_TEXT, any_text_checker)
+
 #	undef const_text_tok_def
 };
 
@@ -75,71 +90,35 @@ void ghttp__init_msg(void)
 	glex_logger.out_streams      = ghttp__logger->out_streams;
 }
 
-static bool parse_general_headers(const char* line, struct ghttp__general_headers* headers);
-static bool parse_request_headers(const char* line, struct ghttp__request_headers* headers);
-static bool parse_responce_headers(const char* line, struct ghttp__responce_headers* headers);
-static bool parse_content(const void* content, const struct ghttp__header* content_length,
-		void** content_out);
+static bool get_parse(struct ghttp__request* request, struct glex__lexer* lexer);
+
+#define unexepted_token() ({ glog__error(ghttp__logger, "unexepted token"); return false; })
+#define except_token(lexer, x) ({ if (glex__get_tok(lexer)->type != x) unexepted_token(); })
 
 bool ghttp__parse_request(struct ghttp__request* request, const char* str)
 {
-	bool return_value = false;
+	struct glex__lexer lexer = {0};
+	glex__set_token_defs(&lexer, array_lenght(token_defs), token_defs);
+	glex__parse_string(&lexer, str);
 
-	char* buf = ghttp__malloc(strlen(str));
-	memset(buf, '\0', strlen(str));
-	strcpy(buf, str);
+	struct glex__token* tok = glex__get_tok(&lexer);	
+	if (tok == NULL) unexepted_token();
 
-	char* save_ptr;
-	char* s = strtok_r(buf, BRBN, &save_ptr);
+	switch (tok->type) {
+#	define continue_break_or_return(x) ({ if (!x) return false; break; })
 
-	request->type = ghttp__malloc(GHTTP_MAX_TYPE);
-	request->url  = ghttp__malloc(GHTTP_MAX_URL);
+	case TOK_GET: continue_break_or_return(get_parse(request, &lexer));
 
-	if (sscanf(s, "%s %s HTTP/1.1", request->type, request->url) != 2)
-		goto done;
-
-	for (s = strtok_r(NULL, BRBN, &save_ptr); 
-			s != NULL && strcmp(s, "") != 0; s = strtok_r(NULL, BRBN, &save_ptr)) {
-		if (!parse_general_headers(s, &request->headers.general)) goto done;
-		if (!parse_request_headers(s, &request->headers)) goto done;
+#	undef continue_or_return
+	
+	default: unexepted_token();
 	}
 
-	if (!parse_content(strtok_r(NULL, "", &save_ptr), &request->headers.general.content_length,
-			&request->content)) goto done;
-
-	return_value = true;
-
-done:
-	ghttp__free(buf);
-	return return_value;
+	glex__free_lexer(&lexer);
 }
 
 bool ghttp__parse_responce(struct ghttp__responce* responce, const char* str)
 {
-	bool return_value = false;
-
-	char* buf = ghttp__malloc(strlen(str));
-	memset(buf, '\0', strlen(str));
-	strcpy(buf, str);
-
-	char* save_ptr;
-	char* s = strtok_r(buf, BRBN, &save_ptr);
-
-	if (sscanf(s, "HTTP/1.1 %i %s", &responce->responce_code, responce->responce_str) != 2)
-		goto done;
-
-	for (s = strtok_r(NULL, BRBN, &save_ptr); 
-			strcmp(s, "") != 0 && s != NULL; s = strtok_r(NULL, BRBN, &save_ptr)) {
-		if (!parse_general_headers(s, &responce->headers.general)) goto done;
-		if (!parse_responce_headers(s, &responce->headers)) goto done;
-	}
-
-	if (!parse_content(strtok_r(NULL, "", &save_ptr), &responce->headers.general.content_length,
-			&responce->content)) goto done;
-
-done:
-	ghttp__free(buf);
-	return return_value;
 }
 
 static void add_general_headers(const struct ghttp__general_headers* headers, char* str);
@@ -171,7 +150,6 @@ void ghttp__create_responce(const struct ghttp__responce* responce, char* str, s
 void ghttp__free_request(const struct ghttp__request* request)
 {
 	free_if_non_null(request->content);
-	free_if_non_null(request->type);
 	free_if_non_null(request->url);
 
 #	define add_header(x, y) free_header_with_headers(x, request->headers);
@@ -247,81 +225,20 @@ static void add_content(const void* content, char* str, size_t* size,
 	*size += content_size_int;
 }
 
-static bool parse_header(const char* line, const char* name, struct ghttp__header* header);
-
-static bool parse_general_headers(const char* line, struct ghttp__general_headers* headers)
+static bool get_parse(struct ghttp__request* request, struct glex__lexer* lexer)
 {
-#	define add_header(x, y) if (!parse_header(line, y, &headers->x)) return false;
-	general_headers
-#	undef add_header
+	request->type = GHTTP__METHOD_GET;
 
-	return true;
-}
+	struct glex__token* tok;
 
-static bool parse_request_headers(const char* line, struct ghttp__request_headers* headers)
-{
-#	define add_header(x, y) if (!parse_header(line, y, &headers->x)) return false;
-	request_headers
-#	undef add_header
+	tok = glex__get_tok(lexer);
+	if (tok == NULL || tok->type != TOK_ANY_TEXT)
+		unexepted_token();
 
-	return true;
-}
+	request->url = ghttp__malloc(strlen(tok->text));
+	strcpy(request->url, tok->text);
 
-static bool parse_responce_headers(const char* line, struct ghttp__responce_headers* headers)
-{
-#	define add_header(x, y) if (!parse_header(line, y, &headers->x)) return false;
-	responce_headers
-#	undef add_header
-
-	return true;
-}
-
-static bool parse_header(const char* line, const char* name, struct ghttp__header* header)
-{
-	bool return_value = false;
-
-	char* buf = ghttp__malloc(strlen(line));
-	memset(buf, '\0', strlen(line));
-	strcpy(buf, line);
-
-	char* save_ptr;
-	const char* key   = strtok_r(buf, ": ", &save_ptr);
-	const char* value = strtok_r(NULL, "", &save_ptr);
-
-	if (key == NULL || value == NULL) goto done;
-	if (strcmp(key, name) != 0) {
-		return_value = true;
-		goto done;
-	}
-
-	header->name  = ghttp__malloc(strlen(key));
-	header->value = ghttp__malloc(strlen(value));
-	memset(header->name, '\0', strlen(header->name));
-	memset(header->value, '\0', strlen(header->value));
-	strcpy(header->name, key);
-	strcpy(header->value, value);
-
-	return_value = true;
-
-done:
-	ghttp__free(buf);
-	return return_value;
-}
-
-static bool parse_content(const void* content, const struct ghttp__header* content_length,
-		void** content_out)
-{
-	if (content_length->value != NULL) {
-		size_t content_length_int = 0;
-		if (sscanf(content_length->value, "%zu", &content_length_int)
-				!= 1) return false;
-
-		*content_out = ghttp__malloc(content_length_int);
-		memset(*content_out, '\0', content_length_int);
-		memcpy(*content_out, content, content_length_int);
-	} else {
-		*content_out = NULL;
-	}
+	except_token(lexer, TOK_BRBN);
 
 	return true;
 }

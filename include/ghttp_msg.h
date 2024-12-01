@@ -4,6 +4,10 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+enum {
+	GHTTP__METHOD_GET = 0,
+};
+
 #define general_headers \
 	add_header(content_type, "Content-Type") \
 	add_header(content_length, "Content-Length")
@@ -51,7 +55,7 @@ struct ghttp__responce {
 };
 
 struct ghttp__request {
-	char* type;
+	int type;
 	char* url;
 
 	struct ghttp__request_headers headers;
