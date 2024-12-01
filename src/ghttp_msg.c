@@ -5,9 +5,75 @@
 #include <ghttp_msg.h>
 #include <ghttp.h>
 
+#include <glex.h>
+#include <glog.h>
+
 #define BRBN "\r\n"
 #define GHTTP_MAX_URL 1024 * 2
 #define GHTTP_MAX_TYPE 128
+
+enum {
+	TOK_SPACE = 0,
+
+	TOK_GET,
+	TOK_HEAD,
+	TOK_POST,
+	TOK_PUT,
+	TOK_DELEATE,
+	TOK_CONNECT,
+	TOK_OPTIONS,
+	TOK_TRACE,
+	TOK_PATCH,
+};
+
+#define text_compare_checker(x, y) static bool x(const char* s) { return !strcmp(y, s); }
+#define array_lenght(x) sizeof(x) / sizeof(x[0])
+
+text_compare_checker(get_tok_checker     , "GET")
+text_compare_checker(head_tok_checker    , "HEAD")
+text_compare_checker(post_tok_checker    , "POST")
+text_compare_checker(put_tok_checker     , "PUT")
+text_compare_checker(deleate_tok_checker , "DELEATE")
+text_compare_checker(connect_tok_checker , "CONNECT")
+text_compare_checker(options_tok_checker , "OPTIONS")
+text_compare_checker(trace_tok_checker   , "TRACE")
+text_compare_checker(patch_tok_checker   , "PATCH")
+
+static struct glog__logger glex_logger = {0};
+static struct glex__token_def token_defs[] = {
+	(struct glex__token_def) {
+		.def_type = GLEX__TOKENDEF_TYPE__IGNORE_SEPARATOR,
+		.type     = TOK_SPACE,
+		.sym      = ' ',
+		
+		.reader     = NULL,
+		.destructor = NULL,
+	},
+
+#	define const_text_tok_def(x, y) (struct glex__token_def) { .def_type = GLEX__TOKENDEF_TYPE__TOKEN, \
+		.type = x, .text_chacker = y, .reader = NULL, .destructor = NULL },
+
+	const_text_tok_def(TOK_GET     , get_tok_checker)
+	const_text_tok_def(TOK_HEAD    , head_tok_checker)
+	const_text_tok_def(TOK_POST    , post_tok_checker)
+	const_text_tok_def(TOK_PUT     , put_tok_checker)
+	const_text_tok_def(TOK_DELEATE , deleate_tok_checker)
+	const_text_tok_def(TOK_CONNECT , connect_tok_checker)
+	const_text_tok_def(TOK_OPTIONS , options_tok_checker)
+	const_text_tok_def(TOK_TRACE   , trace_tok_checker)
+	const_text_tok_def(TOK_PATCH   , patch_tok_checker)
+
+#	undef const_text_tok_def
+};
+
+void ghttp__init_msg(void)
+{
+	glog__logger_from_prefix(&glex_logger, "glex");
+	glex_logger.format           = ghttp__logger->format;
+	glex_logger.min_log_level    = ghttp__logger->min_log_level;
+	glex_logger.out_stream_count = ghttp__logger->out_stream_count;
+	glex_logger.out_streams      = ghttp__logger->out_streams;
+}
 
 static bool parse_general_headers(const char* line, struct ghttp__general_headers* headers);
 static bool parse_request_headers(const char* line, struct ghttp__request_headers* headers);

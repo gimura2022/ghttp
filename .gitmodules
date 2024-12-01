@@ -1,3 +1,6 @@
 [submodule "libglog"]
 	path = libglog
 	url = git@github.com:gimura2022/libglog.git
+[submodule "libglex"]
+	path = libglex
+	url = git@github.com:gimura2022/libglex.git

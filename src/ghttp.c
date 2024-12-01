@@ -46,6 +46,8 @@ void ghttp__init(ghttp__malloc_t allocator, ghttp__free_t deallocator, struct gl
 	ghttp__malloc = allocator;
 	ghttp__free   = deallocator;
 	ghttp__logger = logger;
+
+	ghttp__init_msg();
 }
 
 static void* ghttp__reciver(struct ghttp__reciver_args* args);

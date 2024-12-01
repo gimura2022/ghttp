@@ -59,6 +59,8 @@ struct ghttp__request {
 	void* content;
 };
 
+void ghttp__init_msg(void);
+
 bool ghttp__parse_request(struct ghttp__request* request, const char* str);
 bool ghttp__parse_responce(struct ghttp__responce* responce, const char* str);
 
