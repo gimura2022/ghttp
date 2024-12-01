@@ -6,6 +6,8 @@
 #include <stdbool.h>
 #include <sys/types.h>
 
+#include <glog.h>
+
 #include <ghttp_msg.h>
 
 struct ghttp__server_context {
@@ -30,6 +32,7 @@ typedef void (*ghttp__free_t)(void*);
 
 extern ghttp__malloc_t ghttp__malloc;
 extern ghttp__free_t ghttp__free;
+extern struct glog__logger* ghttp__logger;
 
 void ghttp__init(ghttp__malloc_t allocator, ghttp__free_t deallocator, struct glog__logger* logger);
 

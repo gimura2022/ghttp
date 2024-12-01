@@ -37,16 +37,15 @@ struct ghttp__reciver_args {
 	ghttp__respoder_t not_found;
 };
 
-ghttp__malloc_t ghttp__malloc;
-ghttp__free_t ghttp__free;
-
-static struct glog__logger* logger; 
+ghttp__malloc_t ghttp__malloc      = NULL;
+ghttp__free_t ghttp__free          = NULL;
+struct glog__logger* ghttp__logger = NULL;
 
 void ghttp__init(ghttp__malloc_t allocator, ghttp__free_t deallocator, struct glog__logger* logger)
 {
 	ghttp__malloc = allocator;
 	ghttp__free   = deallocator;
-	logger        = logger;
+	ghttp__logger = logger;
 }
 
 static void* ghttp__reciver(struct ghttp__reciver_args* args);
@@ -54,22 +53,22 @@ static void* ghttp__reciver(struct ghttp__reciver_args* args);
 void ghttp__start_server(struct ghttp__server_data server_data, struct ghttp__path_responder* responders,
 		size_t responder_count, ghttp__respoder_t not_found_responder)
 {
-	glog__debug(logger, "starting server");
+	glog__debug(ghttp__logger, "starting server");
 
 	int server_fd;
 	struct sockaddr_in address;
 
 	if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-		glog__die(logger, "socket faled\n");
+		glog__die(ghttp__logger, "socket faled\n");
 
 	address.sin_family = AF_INET;
 	address.sin_addr.s_addr = INADDR_ANY;
 	address.sin_port = htons(server_data.port);
 
 	if (bind(server_fd, (struct sockaddr*) &address, sizeof(address)) < 0)
-		glog__die(logger, "bind faled\n");
+		glog__die(ghttp__logger, "bind faled\n");
 	if (listen(server_fd, 3) < 0)
-		glog__die(logger, "listen faled\n");
+		glog__die(ghttp__logger, "listen faled\n");
 
 	struct ghttp__server_context context = {
 		.runned = true
@@ -105,7 +104,7 @@ static void* ghttp__reciver(struct ghttp__reciver_args* args)
 
 	struct ghttp__request request = {0};
 	if (!ghttp__parse_request(&request, buf)) {
-		glog__error(logger, "can't parse http_request");
+		glog__error(ghttp__logger, "can't parse http_request");
 		goto done;
 	}
 
