@@ -84,7 +84,7 @@ bool gnub__compile_subproject(const char* path, char* argv[]);
 void gnub__add_target(const char* name, gnub__target_hendler_t handler);
 void gnub__run_targets(int argc, char* argv[], const char* defaults_target[], const size_t count);
 
-char* gnub__get_env_variable(const char* name, const char* or_default);
+char* gnub__get_env_variable(char* name, char* or_default);
 
 #define _gnub__parts_command(x, arr, ...) ({ const char* __parts[] = {__VA_ARGS__}; \
 		x(arr, array_lenght(__parts), __parts); })
@@ -469,7 +469,7 @@ void gnub__run_targets(int argc, char* argv[], const char* defaults_target[], co
 	}
 }
 
-char* gnub__get_env_variable(const char* name, const char* or_default)
+char* gnub__get_env_variable(char* name, char* or_default)
 {
 	return getenv(name) == NULL ? or_default : getenv(name);
 }
