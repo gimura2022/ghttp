@@ -12,7 +12,7 @@ static const char* cflags_deb = " -O0 -g ";
 
 static const char* cppflags = " -I include ";
 
-static const char* ldflags = " -fPIC -lglog ";
+static const char* ldflags = " -fPIC -lglog -lglex ";
 
 static const char* libname = "ghttp";
 
