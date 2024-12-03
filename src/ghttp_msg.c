@@ -148,6 +148,8 @@ bool ghttp__parse_request(struct ghttp__request* request, const char* str)
 	continue_or_return(request_headers_parse(&request->headers, &lexer));
 
 	glex__free_lexer(&lexer);
+
+	return true;
 }
 
 bool ghttp__parse_responce(struct ghttp__responce* responce, const char* str)
@@ -185,10 +187,10 @@ void ghttp__free_request(const struct ghttp__request* request)
 	free_if_non_null(request->content);
 	free_if_non_null(request->url);
 
-#	define add_header(x, y) free_header_with_headers(x, request->headers);
+#	define add_header(x, y, z, w) free_header_with_headers(x, request->headers);
 	request_headers
 #	undef add_header
-#	define add_header(x, y) free_header_with_headers(x, request->headers.general);
+#	define add_header(x, y, z, w) free_header_with_headers(x, request->headers.general);
 	general_headers
 #	undef add_header
 }
@@ -198,10 +200,10 @@ void ghttp__free_responce(const struct ghttp__responce* responce)
 	free_if_non_null(responce->content);
 	free_if_non_null(responce->responce_str);
 	
-#	define add_header(x, y) free_header_with_headers(x, responce->headers);
+#	define add_header(x, y, z, w) free_header_with_headers(x, responce->headers);
 	responce_headers
 #	undef add_header
-#	define add_header(x, y) free_header_with_headers(x, responce->headers.general);
+#	define add_header(x, y, z, w) free_header_with_headers(x, responce->headers.general);
 	general_headers
 #	undef add_header
 }
@@ -209,36 +211,41 @@ void ghttp__free_responce(const struct ghttp__responce* responce)
 #undef free_if_non_null
 #undef free_header_with_headers
 
-static void add_header_to_buf(const char* name, const struct ghttp__header* header, char* str);
+static void add_header_to_buf(const char* name, const struct ghttp__header* header, char* str,
+		const char* value_pattern, void* data);
 
 static void add_general_headers(const struct ghttp__general_headers* headers, char* str)
 {
-#	define add_header(x, y) add_header_to_buf(y, &headers->x, str);
+#	define add_header(x, y, z, w) add_header_to_buf(y, &headers->x, str, w, (void*) &headers->x##_data);
 	general_headers
 #	undef add_header
 }
 
 static void add_request_headers(const struct ghttp__request_headers* headers, char* str)
 {
-#	define add_header(x, y) add_header_to_buf(y, &headers->x, str);
+#	define add_header(x, y, z, w) add_header_to_buf(y, &headers->x, str, w, (void*) &headers->x##_data);
 	request_headers
 #	undef add_header
 }
 
 static void add_responce_headers(const struct ghttp__responce_headers* headers, char* str)
 {
-#	define add_header(x, y) add_header_to_buf(y, &headers->x, str);
+#	define add_header(x, y, z, w) add_header_to_buf(y, &headers->x, str, w, (void*) &headers->x##_data);
 	responce_headers
 #	undef add_header
 }
 
-static void add_header_to_buf(const char* name, const struct ghttp__header* header, char* str)
+static void add_header_to_buf(const char* name, const struct ghttp__header* header, char* str,
+		const char* value_pattern, void* data)
 {
 	if (header->value != NULL) {
+add_str:
 		strcat(str, name);
 		strcat(str, ": ");
 		strcat(str, header->value);
 		strcat(str, BRBN);
+
+		return;
 	}
 }
 
@@ -260,7 +267,7 @@ static void add_content(const void* content, char* str, size_t* size,
 
 static bool get_parse(struct ghttp__request* request, struct glex__lexer* lexer)
 {
-	request->type = GHTTP__METHOD_GET;
+	request->type = "GET";
 
 	struct glex__token* tok;
 
@@ -278,7 +285,7 @@ static bool get_parse(struct ghttp__request* request, struct glex__lexer* lexer)
 }
 
 static bool header_parse(struct ghttp__header* header, char* name, const char* real_name,
-	char* value);
+	char* value, const char* value_pattern, void* data);
 
 static bool general_headers_parse(struct ghttp__general_headers* headers, struct glex__lexer* lexer)
 {
@@ -315,11 +322,10 @@ static bool general_headers_parse(struct ghttp__general_headers* headers, struct
 			strcat(value, i->text);
 		}
 
-#		define add_header(x, y) if (header_parse(&headers->x, name, y, value)) break;
+#		define add_header(x, y, z, w) if (header_parse(&headers->x, name, y, value, w, \
+			&headers->x##_data)) break;
 		general_headers
 #		undef add_header
-
-		glog__warnf(ghttp__logger, "found unrecognized header: %s", name);
 
 		ghttp__free(name);
 		ghttp__free(value);
@@ -330,16 +336,65 @@ static bool general_headers_parse(struct ghttp__general_headers* headers, struct
 
 static bool request_headers_parse(struct ghttp__request_headers* headers, struct glex__lexer* lexer)
 {
+	struct glex__token* tok;
+
+	while (true) {
+		tok = glex__get_tok(lexer);
+
+		if (tok->type == TOK_BR) {
+			except_token(lexer, TOK_BN);
+			except_token(lexer, TOK_BR);
+			except_token(lexer, TOK_BN);
+
+			break;
+		} else if (tok->type == TOK_ANY_TEXT);
+		else unexepted_token();
+		
+		char* name = ghttp__malloc(strlen(tok->text));
+		strcpy(name, tok->text);
+
+		except_token(lexer, TOK_SEMICOLON);
+
+		struct glex__token *data_start, *data_end;
+		data_start = lexer->cur_tok;
+
+		while ((tok = glex__get_tok(lexer))->type != TOK_BR) {
+			data_end = lexer->cur_tok;
+		}
+		except_token(lexer, TOK_BN);
+
+		char* value = ghttp__malloc(GHTTP_MAX_HEADER_VALUE);
+		memset(value, '\0', GHTTP_MAX_HEADER_VALUE);
+		for (struct glex__token* i = data_start; i != data_end; i = i->next) {
+			strcat(value, i->text);
+		}
+
+#		define add_header(x, y, z, w) if (header_parse(&headers->x, name, y, value, w, \
+			&headers->x##_data)) break;
+		request_headers
+#		undef add_header
+
+		ghttp__free(name);
+		ghttp__free(value);
+	}
+
+	return true;
 }
 
 static bool header_parse(struct ghttp__header* header, char* name, const char* real_name,
-	char* value)
+	char* value, const char* value_pattern, void* data)
 {
 	if (strcmp(name, real_name) != 0)
 		return false;
 
 	header->name  = name;
 	header->value = value;
+
+	if (value_pattern == NULL)
+		return true;
+
+	if (sscanf(value, value_pattern, data) != 1)
+		return false;
 
 	return true;
 }

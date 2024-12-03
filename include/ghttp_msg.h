@@ -9,14 +9,14 @@ enum {
 };
 
 #define general_headers \
-	add_header(content_type, "Content-Type") \
-	add_header(content_length, "Content-Length")
+	add_header(content_type, "Content-Type", char*, NULL) \
+	add_header(content_length, "Content-Length", size_t, "%zu")
 
 #define request_headers \
-	add_header(host, "Host")
+	add_header(host, "Host", char*, NULL)
 
 #define responce_headers \
-	add_header(server, "Server")
+	add_header(server, "Server", char*, NULL)
 
 struct ghttp__header {
 	char* name;
@@ -24,13 +24,13 @@ struct ghttp__header {
 };
 
 struct ghttp__general_headers {
-#	define add_header(x, y) struct ghttp__header x;
+#	define add_header(x, y, z, w) struct ghttp__header x; z x##_data;
 	general_headers
 #	undef add_header
 };
 
 struct ghttp__request_headers {
-#	define add_header(x, y) struct ghttp__header x;
+#	define add_header(x, y, z, w) struct ghttp__header x; z x##_data;
 	request_headers
 #	undef add_header
 	
@@ -38,7 +38,7 @@ struct ghttp__request_headers {
 };
 
 struct ghttp__responce_headers {
-#	define add_header(x, y) struct ghttp__header x;
+#	define add_header(x, y, z, w) struct ghttp__header x; z x##_data;
 	responce_headers
 #	undef add_header
 	
@@ -55,7 +55,7 @@ struct ghttp__responce {
 };
 
 struct ghttp__request {
-	int type;
+	char* type;
 	char* url;
 
 	struct ghttp__request_headers headers;
