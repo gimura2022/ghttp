@@ -11,9 +11,13 @@
 #define BRBN "\r\n"
 #define GHTTP_MAX_URL 1024 * 2
 #define GHTTP_MAX_TYPE 128
+#define GHTTP_MAX_HEADER_VALUE 2048
 
 enum {
 	TOK_SPACE = 0,
+	TOK_BR,
+	TOK_BN,
+	TOK_SEMICOLON,
 
 	TOK_GET,
 	TOK_HEAD,
@@ -25,7 +29,6 @@ enum {
 	TOK_TRACE,
 	TOK_PATCH,
 
-	TOK_BRBN,
 	TOK_HTTP_VER,
 
 	TOK_ANY_TEXT,
@@ -44,7 +47,6 @@ text_compare_checker(options_tok_checker , "OPTIONS")
 text_compare_checker(trace_tok_checker   , "TRACE")
 text_compare_checker(patch_tok_checker   , "PATCH")
 
-text_compare_checker(brbn_tok_checker     , BRBN);
 text_compare_checker(http_ver_tok_checker , "HTTP/1.1");
 
 static bool any_text_checker(const char* s) { return true; }
@@ -55,6 +57,31 @@ static struct glex__token_def token_defs[] = {
 		.def_type = GLEX__TOKENDEF_TYPE__IGNORE_SEPARATOR,
 		.type     = TOK_SPACE,
 		.sym      = ' ',
+		
+		.reader     = NULL,
+		.destructor = NULL,
+	},
+
+	(struct glex__token_def) {
+		.def_type = GLEX__TOKENDEF_TYPE__SEPARATOR,
+		.type     = TOK_BR,
+		.sym      = '\r',
+		
+		.reader     = NULL,
+		.destructor = NULL,
+	},
+	(struct glex__token_def) {
+		.def_type = GLEX__TOKENDEF_TYPE__SEPARATOR,
+		.type     = TOK_BN,
+		.sym      = '\n',
+		
+		.reader     = NULL,
+		.destructor = NULL,
+	},
+	(struct glex__token_def) {
+		.def_type = GLEX__TOKENDEF_TYPE__SEPARATOR,
+		.type     = TOK_SEMICOLON,
+		.sym      = ':',
 		
 		.reader     = NULL,
 		.destructor = NULL,
@@ -73,7 +100,6 @@ static struct glex__token_def token_defs[] = {
 	const_text_tok_def(TOK_TRACE   , trace_tok_checker)
 	const_text_tok_def(TOK_PATCH   , patch_tok_checker)
 
-	const_text_tok_def(TOK_BRBN     , brbn_tok_checker)
 	const_text_tok_def(TOK_HTTP_VER , http_ver_tok_checker)
 
 	const_text_tok_def(TOK_ANY_TEXT, any_text_checker)
@@ -92,8 +118,12 @@ void ghttp__init_msg(void)
 
 static bool get_parse(struct ghttp__request* request, struct glex__lexer* lexer);
 
+static bool general_headers_parse(struct ghttp__general_headers* headers, struct glex__lexer* lexer);
+static bool request_headers_parse(struct ghttp__request_headers* headers, struct glex__lexer* lexer);
+
 #define unexepted_token() ({ glog__error(ghttp__logger, "unexepted token"); return false; })
 #define except_token(lexer, x) ({ if (glex__get_tok(lexer)->type != x) unexepted_token(); })
+#define continue_or_return(x) ({ if (!x) return false; })
 
 bool ghttp__parse_request(struct ghttp__request* request, const char* str)
 {
@@ -109,10 +139,13 @@ bool ghttp__parse_request(struct ghttp__request* request, const char* str)
 
 	case TOK_GET: continue_break_or_return(get_parse(request, &lexer));
 
-#	undef continue_or_return
+#	undef continue_break_or_return
 	
 	default: unexepted_token();
 	}
+
+	continue_or_return(general_headers_parse(&request->headers.general, &lexer));
+	continue_or_return(request_headers_parse(&request->headers, &lexer));
 
 	glex__free_lexer(&lexer);
 }
@@ -238,7 +271,75 @@ static bool get_parse(struct ghttp__request* request, struct glex__lexer* lexer)
 	request->url = ghttp__malloc(strlen(tok->text));
 	strcpy(request->url, tok->text);
 
-	except_token(lexer, TOK_BRBN);
+	except_token(lexer, TOK_BR);
+	except_token(lexer, TOK_BN);
+
+	return true;
+}
+
+static bool header_parse(struct ghttp__header* header, char* name, const char* real_name,
+	char* value);
+
+static bool general_headers_parse(struct ghttp__general_headers* headers, struct glex__lexer* lexer)
+{
+	struct glex__token* tok;
+
+	while (true) {
+		tok = glex__get_tok(lexer);
+
+		if (tok->type == TOK_BR) {
+			except_token(lexer, TOK_BN);
+			except_token(lexer, TOK_BR);
+			except_token(lexer, TOK_BN);
+
+			break;
+		} else if (tok->type == TOK_ANY_TEXT);
+		else unexepted_token();
+		
+		char* name = ghttp__malloc(strlen(tok->text));
+		strcpy(name, tok->text);
+
+		except_token(lexer, TOK_SEMICOLON);
+
+		struct glex__token *data_start, *data_end;
+		data_start = lexer->cur_tok;
+
+		while ((tok = glex__get_tok(lexer))->type != TOK_BR) {
+			data_end = lexer->cur_tok;
+		}
+		except_token(lexer, TOK_BN);
+
+		char* value = ghttp__malloc(GHTTP_MAX_HEADER_VALUE);
+		memset(value, '\0', GHTTP_MAX_HEADER_VALUE);
+		for (struct glex__token* i = data_start; i != data_end; i = i->next) {
+			strcat(value, i->text);
+		}
+
+#		define add_header(x, y) if (header_parse(&headers->x, name, y, value)) break;
+		general_headers
+#		undef add_header
+
+		glog__warnf(ghttp__logger, "found unrecognized header: %s", name);
+
+		ghttp__free(name);
+		ghttp__free(value);
+	}
+
+	return true;
+}
+
+static bool request_headers_parse(struct ghttp__request_headers* headers, struct glex__lexer* lexer)
+{
+}
+
+static bool header_parse(struct ghttp__header* header, char* name, const char* real_name,
+	char* value)
+{
+	if (strcmp(name, real_name) != 0)
+		return false;
+
+	header->name  = name;
+	header->value = value;
 
 	return true;
 }
