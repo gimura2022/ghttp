@@ -75,7 +75,7 @@ void gnub__create_lib(struct gnub__cmd_arr* arr, const char* ar, const char* cc,
 		char output[GNUB_FIND_C_FILES_MAX_FILES][2][GNUB_MAX_FILE_NAME], const size_t count);
 
 void gnub__install_lib(struct gnub__cmd_arr* arr, const char* name, const char* prefix, int type,
-		const char* include);
+		const char* include, const char* path);
 
 bool gnub__recompile_self_with_build_arr(struct gnub__cmd_arr* arr, const char* output_file, char* argv[]);
 bool gnub__recompile_self(char* argv[]);
@@ -221,13 +221,22 @@ done:
 int gnub__execute_commands(struct gnub__cmd_arr* cmds)
 {
 	struct _gnub__cmd* cmd = cmds->start;
+
+	int count, i;
+	struct _gnub__cmd* cur_cmd = cmd;
+	for (count = 0; cur_cmd != NULL; count++, (cur_cmd = cur_cmd->next));
+
+	i = 0;
 	while (cmd != NULL) {
+		printf("[executing %i/%i] ", i, count);	
+
 		int code = _gnub__execute_command(cmd);
 		if (code != 0) {
 			return code;
 		}
 
 		cmd = cmd->next;
+		i++;
 	}
 
 	return 0;
@@ -369,6 +378,8 @@ void gnub__create_lib(struct gnub__cmd_arr* arr, const char* ar, const char* cc,
 
 bool gnub__compile_subproject(const char* path, char* argv[])
 {
+	printf("compiling subproject %s\n", path);
+
 	char path_to_gnub[GNUB_MAX_FILE_NAME] = {0};
 	strcat(path_to_gnub, "./");
 	strcat(path_to_gnub, path);
@@ -393,10 +404,12 @@ bool gnub__compile_subproject(const char* path, char* argv[])
 	chdir(path);
 	system("./gnub");
 	chdir(old_dir);
+
+	printf("\nend compiling subproject %s\n", path);
 }
 
 void gnub__install_lib(struct gnub__cmd_arr* arr, const char* name, const char* prefix, int type,
-		const char* include)
+		const char* include, const char* path)
 {
 	char libpath[GNUB_MAX_FILE_NAME] = {0};
 	strcat(libpath, prefix);
@@ -404,7 +417,8 @@ void gnub__install_lib(struct gnub__cmd_arr* arr, const char* name, const char* 
 
 	char includepath[GNUB_MAX_FILE_NAME] = {0};
 	strcat(includepath, prefix);
-	strcat(includepath, "/include");
+	strcat(includepath, "/include/");
+	strcat(includepath, path);
 
 	char all_includefiles[GNUB_MAX_FILE_NAME] = {0};
 	strcat(all_includefiles, include);
@@ -451,8 +465,17 @@ void gnub__add_target(const char* name, gnub__target_hendler_t handler)
 
 static void _gnub__run_target(const char* name)
 {
+	bool found = false;
 	for (int i = 0; i < targets_count; i++) {
-		if (strcmp(targets[i].name, name) == 0) targets[i].handler();
+		if (strcmp(targets[i].name, name) == 0) {
+			targets[i].handler();
+			found = true;
+		}
+	}
+
+	if (!found) {
+		fprintf(stderr, "Target %s not found\n", name);
+		exit(-1);
 	}
 }
 
@@ -465,7 +488,7 @@ void gnub__run_targets(int argc, char* argv[], const char* defaults_target[], co
 	}
 
 	for (int i = 1; i < argc; i++) {
-		_gnub__run_target(argv[i]);	
+		_gnub__run_target(argv[i]);
 	}
 }
 
