@@ -12,7 +12,7 @@ static const char* cflags_deb = " -O0 -g ";
 
 static const char* cppflags = " -I include ";
 
-static const char* ldflags = " -fPIC -lglog -lglex ";
+static const char* ldflags = " -fPIC -lglog ";
 
 static const char* libname = "ghttp";
 
@@ -41,7 +41,7 @@ static void die(const char* msg, ...)
 static void compile(void)
 {
 	gnub__compile_subproject("libglog", *argv_ptr);
-	gnub__compile_subproject("libglex", *argv_ptr);
+	gnub__compile_subproject("libgstd", *argv_ptr);
 
 	strcat(cflags_out, cflags);
 	strcat(cppflags_out, cppflags);
