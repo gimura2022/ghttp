@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 
 #include <gstd/strref.h>
 
@@ -57,7 +58,8 @@ void ghttp__gen_request(const struct ghttp__request* request, char** buf, size_t
 
 static void gen_header(struct ghttp__header* header, struct gstd__strref* str);
 
-#define add_header(x, y) gen_header(&headers->x, str);
+#define add_header(x, y) headers->x.name = (struct gstd__strref) { .start = y, \
+	.end = (char*) ((size_t) y + strlen(y)), .next = NULL }; gen_header(&headers->x, str);
 static void gen_responce_headers(struct ghttp__responce_headers* headers,
 		struct gstd__strref* str)
 {

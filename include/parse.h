@@ -7,7 +7,7 @@
 
 #include <ghttp/messanges.h>
 
-bool ghttp__parse_request(const struct gstd__strref str, struct ghttp__request* request);
-bool ghttp__parse_responce(const struct gstd__strref str, struct ghttp__responce* responce);
+bool ghttp__parse_request(const struct gstd__strref* str, struct ghttp__request* request);
+bool ghttp__parse_responce(const struct gstd__strref* str, struct ghttp__responce* responce);
 
 #endif
