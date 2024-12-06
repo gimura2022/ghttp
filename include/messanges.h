@@ -1,20 +1,21 @@
 #ifndef _messagnes_h
 #define _messagnes_h
 
+#include <stddef.h>
+
 #include <gstd/strref.h>
 
-#define ghttp__process_general_headers ({ \
+#define GHTTP__BRBN "\r\n"
+
+#define ghttp__process_general_headers \
 		add_header(content_type   , "Content-Type"   , void*  , NULL) \
 		add_header(content_length , "Content-Length" , size_t , "%zu") \
-	})
 
-#define ghttp__process_request_headers ({ \
+#define ghttp__process_request_headers  \
 		add_header(host , "Host" , void* , NULL) \
-	})
 
-#define ghttp__process_responce_headers ({ \
+#define ghttp__process_responce_headers  \
 		add_header(server , "Server" , void* , NULL) \
-	})
 
 struct ghttp__header {
 	struct gstd__strref name;
