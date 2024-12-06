@@ -109,15 +109,28 @@ static bool parse_get_request(struct gstd__strref* str, struct ghttp__request* r
 }
 
 static bool get_header(struct gstd__strref* str, struct ghttp__header* header);
+static bool parse_general_body(struct gstd__strref* str, struct ghttp__general_headers* headers);
 
-#define add_header(x, y) struct gstd__strref __x = gstd__strref_from_str(y); \
-	if (gstd__strref_cmp(&header.name, &__x) == 0) headers->x = header;
+#define add_header(x, y) ({ struct gstd__strref __x = gstd__strref_from_str(y); \
+	if (gstd__strref_cmp(&header.name, &__x) == 0) headers->x = header; });
 static bool parse_request_body(struct gstd__strref* str, struct ghttp__request_headers* headers)
 {
 	struct ghttp__header header;
 	continue_or_return(get_header(str, &header));
 
 	ghttp__process_request_headers
+	
+	continue_or_return(parse_general_body(str, &headers->general));
+
+	return true;
+}
+
+static bool parse_general_body(struct gstd__strref* str, struct ghttp__general_headers* headers)
+{
+	struct ghttp__header header;
+	continue_or_return(get_header(str, &header));
+
+	ghttp__process_general_headers
 
 	return true;
 }
