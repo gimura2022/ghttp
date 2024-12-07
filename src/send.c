@@ -1,5 +1,10 @@
 #include <stddef.h>
+#include <string.h>
 #include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 
 #include <ghttp/messanges.h>
@@ -16,9 +21,58 @@
 
 static bool send_data(const void* data, size_t data_size, void** out_data, size_t* out_data_size, int fd);
 
-struct ghttp__responce ghttp__send_request(const struct ghttp__request* request, const char* ip)
+struct ghttp__responce ghttp__send_request(const struct ghttp__request* request, const char* ip, int port,
+		void** to_free)
 {
-	
+	struct ghttp__responce responce = {0};
+
+	int fd, server;
+	struct sockaddr_in serv_addr = {0};
+
+	if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		glog__error(ghttp__logger, "socket error");
+		return responce;
+	}
+
+	if ((server = gethostname((char*) ip, strlen(ip)) < 0)) {
+		glog__error(ghttp__logger, "get host name error");
+		close(fd);
+		return responce;
+	}
+
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_port   = htons(port);
+
+	if (connect(fd, (struct sockaddr*) &serv_addr, sizeof(serv_addr)) < 0) {
+		glog__error(ghttp__logger, "connect error");
+		close(fd);
+		return responce;
+	}
+
+	void *out, *in;
+	size_t out_size, in_size;
+	ghttp__gen_request(request, (char**) &out, &out_size);
+
+	glog__infof(ghttp__logger, "> %s", out);
+
+	if (!send_data(out, out_size, &in, &in_size, fd)) {
+		glog__error(ghttp__logger, "sending/reciving error");
+		goto done;
+	}
+
+	*to_free = in;
+
+	glog__infof(ghttp__logger, "< %s", in);
+
+	if (!ghttp__parse_responce(&(struct gstd__strref) { .start = in, .end = in + in_size, .next = NULL },
+			&responce)) {
+		glog__error(ghttp__logger, "request syntax error");
+		goto done;
+	}
+
+done:
+	ghttp__memmanager->deallocator(out);
+	return responce;
 }
 
 struct ghttp__request ghttp__send_responce(const struct ghttp__responce* responce, int fd, void** to_free)
