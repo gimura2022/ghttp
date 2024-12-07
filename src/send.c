@@ -20,6 +20,7 @@
 #define RECV_BUFFER_SIZE 64 * 1024
 
 static bool send_data(const void* data, size_t data_size, void** out_data, size_t* out_data_size, int fd);
+static void get_first_line(const char* str, char** out);
 
 struct ghttp__responce ghttp__send_request(const struct ghttp__request* request, const char* ip, int port,
 		void** to_free)
@@ -58,7 +59,10 @@ struct ghttp__responce ghttp__send_request(const struct ghttp__request* request,
 	size_t out_size, in_size;
 	ghttp__gen_request(request, (char**) &out, &out_size);
 
-	glog__infof(ghttp__logger, "> %s", out);
+	char* line;
+	get_first_line(out, &line);
+	glog__infof(ghttp__logger, "to > %s", line);
+	ghttp__memmanager->deallocator(line);
 
 	if (!send_data(out, out_size, &in, &in_size, fd)) {
 		glog__error(ghttp__logger, "sending/reciving error");
@@ -67,7 +71,9 @@ struct ghttp__responce ghttp__send_request(const struct ghttp__request* request,
 
 	*to_free = in;
 
-	glog__infof(ghttp__logger, "< %s", in);
+	get_first_line(in, &line);
+	glog__infof(ghttp__logger, "from < %s", line);
+	ghttp__memmanager->deallocator(line);
 
 	if (!ghttp__parse_responce(&(struct gstd__strref) { .start = in, .end = in + in_size, .next = NULL },
 			&responce)) {
@@ -90,7 +96,10 @@ struct ghttp__request ghttp__send_responce(const struct ghttp__responce* responc
 	size_t out_size, in_size;
 	ghttp__gen_responce(responce, (char**) &out, &out_size);
 
-	glog__infof(ghttp__logger, "> %s", out);
+	char* line;
+	get_first_line(out, &line);
+	glog__infof(ghttp__logger, "to > %s", out);
+	ghttp__memmanager->deallocator(line);
 
 	if (!send_data(out, out_size, &in, &in_size, fd)) {
 		glog__error(ghttp__logger, "sending/reciving error");
@@ -99,7 +108,9 @@ struct ghttp__request ghttp__send_responce(const struct ghttp__responce* responc
 
 	*to_free = in;
 
-	glog__infof(ghttp__logger, "< %s", in);
+	get_first_line(in, &line);
+	glog__infof(ghttp__logger, "from < %s", in);
+	ghttp__memmanager->deallocator(line);
 
 	if (!ghttp__parse_request(&(struct gstd__strref) { .start = in, .end = in + in_size, .next = NULL },
 			&request)) {
@@ -121,4 +132,11 @@ static bool send_data(const void* data, size_t data_size, void** out_data, size_
 		return false;
 
 	return true;
+}
+
+static void get_first_line(const char* str, char** out)
+{
+	const char* p = strstr(str, GHTTP__BRBN);
+	*out = ghttp__memmanager->allocator(p - str + 1);
+	memcpy(*out, str, p - str);
 }
