@@ -87,6 +87,10 @@ static int request_enumerator(struct gstd__strref* str, struct ghttp__request* r
 	return true;
 }
 
+static int responce_enumerator(struct gstd__strref* str, struct ghttp__responce* responce, size_t line)
+{
+}
+
 static bool parse_get_request(struct gstd__strref* str, struct ghttp__request* request);
 
 static bool parse_request_meta(struct gstd__strref* str, struct ghttp__request* request)
@@ -150,11 +154,13 @@ static bool get_header(struct gstd__strref* str, struct ghttp__header* header)
 			.next  = NULL,
 		},
 		.value = (struct gstd__strref) {
-			.start = p,
+			.start = p + 1,
 			.end   = str->end,
 			.next  = NULL,
 		},
 	};
+
+	while (*header->value.start == ' ') header->value.start++;
 
 	return true;
 }
