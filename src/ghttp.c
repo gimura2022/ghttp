@@ -1,4 +1,5 @@
 #include <ghttp/ghttp.h>
+#include <ghttp/gen.h>
 
 struct gstd__memmanager* ghttp__memmanager = NULL;
 struct glog__logger* ghttp__logger         = NULL;
@@ -7,4 +8,6 @@ void ghttp__init(struct gstd__memmanager* memmanager, struct glog__logger* logge
 {
 	ghttp__memmanager = memmanager;
 	ghttp__logger     = logger;
+
+	ghttp__gen_init();
 }

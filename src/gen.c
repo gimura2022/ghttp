@@ -8,6 +8,8 @@
 #include <ghttp/ghttp.h>
 
 #define MAX_META_SIZE 512
+#define MAX_METHOD_SIZE 64
+#define MAX_TO_FREE_MAX 64
 
 static const char* semicolon_sep_str = ": ";
 static const char* brbn_sep_str      = GHTTP__BRBN;
@@ -22,19 +24,23 @@ void ghttp__gen_init(void)
 }
 
 static void gen_responce_headers(struct ghttp__responce_headers* headers,
-		struct gstd__strref* str);
+		struct gstd__strref* str, void** to_free, size_t* to_free_size);
 static void gen_request_headers(struct ghttp__request_headers* headers,
-		struct gstd__strref* str);
+		struct gstd__strref* str, void** to_free, size_t* to_free_size);
 static void gen_general_headers(struct ghttp__general_headers* headers,
-		struct gstd__strref* str);
+		struct gstd__strref* str, void** to_free, size_t* to_free_size);
 
-static void gen_data(const void* data, size_t data_size, struct gstd__strref* str);
+static void gen_data(const void* data, size_t data_size, struct gstd__strref* str,
+		struct gstd__strref* data_str);
 
 static const char* get_responce_message_by_code(int code);
 
 void ghttp__gen_responce(const struct ghttp__responce* responce, char** buf, size_t* out_size)
 {
-	struct gstd__strref str;
+	struct gstd__strref str, data_str;
+
+	void* to_free[MAX_TO_FREE_MAX] = {NULL};
+	size_t to_free_size = 0;
 
 	char meta[MAX_META_SIZE];
 	sprintf(meta, "HTTP/1.1 %i %s" GHTTP__BRBN, responce->code,
@@ -42,58 +48,117 @@ void ghttp__gen_responce(const struct ghttp__responce* responce, char** buf, siz
 
 	str = gstd__strref_from_str(meta);
 
-	gen_responce_headers((struct ghttp__responce_headers*) &responce->headers, &str);
-	gen_general_headers((struct ghttp__general_headers*) &responce->headers.general, &str);
+	gen_responce_headers((struct ghttp__responce_headers*) &responce->headers, &str, to_free,
+			&to_free_size);
+	gen_general_headers((struct ghttp__general_headers*) &responce->headers.general, &str, to_free,
+			&to_free_size);
 
-	if (responce->data != NULL && responce->headers.general.content_length.has) {
-		gen_data(responce->data, responce->data_size, &str);
+	to_free[to_free_size] = ghttp__memmanager->allocator(sizeof(struct gstd__strref));
+	*((struct gstd__strref*) to_free[to_free_size]) = brbn_sep;
+	gstd__strref_cat(&str, to_free[to_free_size]);
+	to_free_size++;
+
+	if (responce->data != NULL) {
+		gen_data(responce->data, responce->data_size, &str, &data_str);
 	}
 
 	*out_size = gstd__strref_len(&str);
 	*buf = ghttp__memmanager->allocator(*out_size);
 	gstd__str_from_strref(*buf, &str);
+
+	for (int i = 0; i < to_free_size; i++)
+		ghttp__memmanager->deallocator(to_free[i]);
 }
 
-void ghttp__gen_request(const struct ghttp__request* request, char** buf, size_t* out_size);
+static const char* get_method(int type);
 
-static void gen_header(struct ghttp__header* header, struct gstd__strref* str);
+void ghttp__gen_request(const struct ghttp__request* request, char** buf, size_t* out_size)
+{
+	struct gstd__strref str, data_str;
+
+	void* to_free[MAX_TO_FREE_MAX] = {NULL};
+	size_t to_free_size = 0;
+
+	char meta[MAX_META_SIZE];
+	char method[MAX_METHOD_SIZE];
+	gstd__str_from_strref(method, &request->get.url);
+	sprintf(meta, "%s %s" GHTTP__BRBN, get_method(request->type), method);
+
+	str = gstd__strref_from_str(meta);
+
+	gen_request_headers((struct ghttp__request_headers*) &request->headers, &str, to_free,
+			&to_free_size);
+	gen_general_headers((struct ghttp__general_headers*) &request->headers.general, &str, to_free,
+			&to_free_size);
+
+	to_free[to_free_size] = ghttp__memmanager->allocator(sizeof(struct gstd__strref));
+	*((struct gstd__strref*) to_free[to_free_size]) = brbn_sep;
+	gstd__strref_cat(&str, to_free[to_free_size]);
+	to_free_size++;
+
+	if (request->data != NULL) {
+		gen_data(request->data, request->data_size, &str, &data_str);
+	}
+
+	*out_size = gstd__strref_len(&str);
+	*buf = ghttp__memmanager->allocator(*out_size);
+	gstd__str_from_strref(*buf, &str);
+
+	for (int i = 0; i < to_free_size; i++)
+		ghttp__memmanager->deallocator(to_free[i]);
+}
+
+static void gen_header(struct ghttp__header* header, struct gstd__strref* str, void** to_free,
+		size_t* to_free_size);
 
 #define add_header(x, y) headers->x.name = (struct gstd__strref) { .start = y, \
-	.end = (char*) ((size_t) y + strlen(y)), .next = NULL }; gen_header(&headers->x, str);
+	.end = (char*) ((size_t) y + strlen(y)), .next = NULL }; gen_header(&headers->x, str, to_free, \
+			to_free_size);
 static void gen_responce_headers(struct ghttp__responce_headers* headers,
-		struct gstd__strref* str)
+		struct gstd__strref* str, void** to_free, size_t* to_free_size)
 {
 	ghttp__process_responce_headers
 }
 
 static void gen_request_headers(struct ghttp__request_headers* headers,
-		struct gstd__strref* str)
+		struct gstd__strref* str, void** to_free, size_t* to_free_size)
 {
 	ghttp__process_request_headers
 }
 
 static void gen_general_headers(struct ghttp__general_headers* headers,
-		struct gstd__strref* str)
+		struct gstd__strref* str, void** to_free, size_t* to_free_size)
 {
 	ghttp__process_general_headers
 }
 #undef add_header
 
-static void gen_header(struct ghttp__header* header, struct gstd__strref* str)
+static void gen_header(struct ghttp__header* header, struct gstd__strref* str, void** to_free,
+		size_t* to_free_size)
 {
 	if (!header->has)
 		return;
 
 	gstd__strref_cat(str, &header->name);
-	gstd__strref_cat(str, &semicolon_sep);
+
+	to_free[*to_free_size] = ghttp__memmanager->allocator(sizeof(struct gstd__strref));
+	*((struct gstd__strref*) to_free[*to_free_size]) = semicolon_sep;
+	gstd__strref_cat(str, to_free[*to_free_size]);
+	(*to_free_size)++;
+
 	gstd__strref_cat(str, &header->value);
-	gstd__strref_cat(str, &brbn_sep);
+
+	to_free[*to_free_size] = ghttp__memmanager->allocator(sizeof(struct gstd__strref));
+	*((struct gstd__strref*) to_free[*to_free_size]) = brbn_sep;
+	gstd__strref_cat(str, to_free[*to_free_size]);
+	(*to_free_size)++;
 }
 
-static void gen_data(const void* data, size_t data_size, struct gstd__strref* str)
+static void gen_data(const void* data, size_t data_size, struct gstd__strref* str,
+		struct gstd__strref* data_str)
 {
-	gstd__strref_cat(str, &(struct gstd__strref) { .start = data, .end = data + data_size,
-			.next = NULL });
+	*data_str = (struct gstd__strref) { .start = data, .end = data + data_size, .next = NULL };
+	gstd__strref_cat(str, data_str);
 }
 
 static const char* status_100 = "Continue";
@@ -239,4 +304,18 @@ static const char* get_responce_message_by_code(int code)
 #	undef case
 
 	return status_undefined;
+}
+
+static const char* method_get       = "GET";
+static const char* method_undefined = "UNDEFINED";
+
+static const char* get_method(int type)
+{
+#	define case(x, y) if (type == x) return y;
+
+	case(GHTTP__REQUEST_GET, method_get);
+
+#	undef case
+
+	return method_undefined;
 }
