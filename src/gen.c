@@ -80,7 +80,7 @@ void ghttp__gen_request(const struct ghttp__request* request, char** buf, size_t
 	size_t to_free_size = 0;
 
 	char meta[MAX_META_SIZE];
-	char method[MAX_METHOD_SIZE];
+	char method[MAX_METHOD_SIZE] = {0};
 	gstd__str_from_strref(method, &request->get.url);
 	sprintf(meta, "%s %s" GHTTP__BRBN, get_method(request->type), method);
 

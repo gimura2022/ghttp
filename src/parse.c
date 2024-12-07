@@ -115,7 +115,7 @@ static bool parse_request_meta(struct gstd__strref* str, struct ghttp__request* 
 
 static bool parse_responce_meta(struct gstd__strref* str, struct ghttp__responce* responce)
 {
-	if (strstr(str->start, "HTTP/1.1") != str->start)
+	if (strstr(str->start, "HTTP/1.1") != str->start && strstr(str->start, "HTTP/1.0") != str->start)
 		return false;
 
 	char number[MAX_NUMBER] = {0};

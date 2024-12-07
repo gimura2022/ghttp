@@ -24,17 +24,21 @@ static bool send_data(const void* data, size_t data_size, void** out_data, size_
 struct ghttp__responce ghttp__send_request(const struct ghttp__request* request, const char* ip, int port,
 		void** to_free)
 {
+	*to_free = NULL;
+
 	struct ghttp__responce responce = {0};
 
-	int fd, server;
+	int fd;
 	struct sockaddr_in serv_addr = {0};
+	struct hostent* server = NULL;
 
 	if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		glog__error(ghttp__logger, "socket error");
 		return responce;
 	}
 
-	if ((server = gethostname((char*) ip, strlen(ip)) < 0)) {
+	server = gethostbyname((char*) ip);
+	if (server == NULL) {
 		glog__error(ghttp__logger, "get host name error");
 		close(fd);
 		return responce;
@@ -42,6 +46,7 @@ struct ghttp__responce ghttp__send_request(const struct ghttp__request* request,
 
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_port   = htons(port);
+	memcpy(&serv_addr.sin_addr.s_addr, server->h_addr_list[0], server->h_length);
 
 	if (connect(fd, (struct sockaddr*) &serv_addr, sizeof(serv_addr)) < 0) {
 		glog__error(ghttp__logger, "connect error");
@@ -77,6 +82,8 @@ done:
 
 struct ghttp__request ghttp__send_responce(const struct ghttp__responce* responce, int fd, void** to_free)
 {
+	*to_free = NULL;
+
 	struct ghttp__request request = {0};
 
 	void *out, *in;
@@ -107,8 +114,7 @@ done:
 
 static bool send_data(const void* data, size_t data_size, void** out_data, size_t* out_data_size, int fd)
 {
-	if (send(fd, data, data_size, 0) != 0)
-		return false;
+	send(fd, data, data_size, 0);
 
 	*out_data = ghttp__memmanager->allocator(RECV_BUFFER_SIZE);
 	if ((*out_data_size = recv(fd, *out_data, RECV_BUFFER_SIZE, 0)) <= 0)
