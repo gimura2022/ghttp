@@ -1,12 +1,16 @@
 #include <stdbool.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
 #include <gstd/strref.h>
 
 #include <ghttp/ghttp.h>
 #include <ghttp/parse.h>
 #include <ghttp/messanges.h>
+
+#define MAX_NUMBER 128
 
 #define continue_or_return(x) ({ if (!x) return false; })
 #define break_or_return(x) ({ if (!x) return false; break; })
@@ -39,7 +43,8 @@ bool ghttp__parse_responce(const struct gstd__strref* str, struct ghttp__responc
 
 	continue_or_return(line_enumerator(str->start, (line_enumerator_f) responce_enumerator, responce,
 				&data_start));
-	continue_or_return(parse_data(str, data_start, (const void**) &responce->data, &responce->data_size));
+	continue_or_return(parse_data(str, data_start, (const void**) &responce->data,
+				&responce->data_size));
 
 	return true;
 }
@@ -87,8 +92,16 @@ static int request_enumerator(struct gstd__strref* str, struct ghttp__request* r
 	return true;
 }
 
+static bool parse_responce_meta(struct gstd__strref* str, struct ghttp__responce* responce);
+static bool parse_responce_body(struct gstd__strref* str, struct ghttp__responce_headers* headers);
+
 static int responce_enumerator(struct gstd__strref* str, struct ghttp__responce* responce, size_t line)
 {
+	if (line == 0) continue_or_return(parse_responce_meta(str, responce));
+	else if (str->start == str->end) return 2;
+	else continue_or_return(parse_responce_body(str, &responce->headers));
+
+	return true;
 }
 
 static bool parse_get_request(struct gstd__strref* str, struct ghttp__request* request);
@@ -96,6 +109,25 @@ static bool parse_get_request(struct gstd__strref* str, struct ghttp__request* r
 static bool parse_request_meta(struct gstd__strref* str, struct ghttp__request* request)
 {
 	continue_or_return(parse_get_request(str, request));
+
+	return true;
+}
+
+static bool parse_responce_meta(struct gstd__strref* str, struct ghttp__responce* responce)
+{
+	if (strstr(str->start, "HTTP/1.1") != str->start)
+		return false;
+
+	char number[MAX_NUMBER] = {0};
+	const char* start = str->start + strlen("HTTP/1.1 ");
+	const char* p = start;
+	while (isdigit(*p)) p++;
+
+	memcpy(number, start, p - start);
+
+	responce->code = atoi(number);
+	if (responce->code == 0)
+		return false;
 
 	return true;
 }
@@ -123,6 +155,18 @@ static bool parse_request_body(struct gstd__strref* str, struct ghttp__request_h
 	continue_or_return(get_header(str, &header));
 
 	ghttp__process_request_headers
+	
+	continue_or_return(parse_general_body(str, &headers->general));
+
+	return true;
+}
+
+static bool parse_responce_body(struct gstd__strref* str, struct ghttp__responce_headers* headers)
+{
+	struct ghttp__header header;
+	continue_or_return(get_header(str, &header));
+
+	ghttp__process_responce_headers
 	
 	continue_or_return(parse_general_body(str, &headers->general));
 
