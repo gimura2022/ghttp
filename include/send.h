@@ -5,7 +5,7 @@
 
 #include <ghttp/messanges.h>
 
-bool ghttp__send_request(const struct ghttp__request* request, const char* ip);
-bool ghttp__send_responce(const struct ghttp__responce* responce, int fd);
+struct ghttp__responce ghttp__send_request(const struct ghttp__request* request, const char* ip);
+struct ghttp__request ghttp__send_responce(const struct ghttp__responce* responce, int fd, void** to_free);
 
 #endif
