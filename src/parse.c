@@ -108,7 +108,10 @@ static bool parse_get_request(struct gstd__strref* str, struct ghttp__request* r
 
 static bool parse_request_meta(struct gstd__strref* str, struct ghttp__request* request)
 {
-	continue_or_return(parse_get_request(str, request));
+#	define case(x, y) ({ const char* __x = strstr(str->start, x); \
+		if (__x && __x < str->end && __x == str->start) y; })
+	case("GET ", continue_or_return(parse_get_request(str, request)));
+#	undef case
 
 	return true;
 }

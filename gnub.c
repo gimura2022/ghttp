@@ -6,7 +6,7 @@
 #define gnub_impl
 #include "gnub.h"
 
-static const char* cflags     = " -std=c99 -Wall -Wpedantic ";
+static const char* cflags     = " -std=c99 -Wall ";
 static const char* cflags_rel = " -O3 -DRELEASE ";
 static const char* cflags_deb = " -O0 -g -DDEBUG ";
 
