@@ -26,7 +26,8 @@ struct ghttp__simple_responce {
 	struct ghttp__responce* real;
 };
 
-typedef void (*ghttp__responder_process_f)(const struct ghttp__request*, struct ghttp__simple_responce*);
+typedef void (*ghttp__responder_process_f)(const struct ghttp__simple_request*,
+		struct ghttp__simple_responce*);
 typedef void (*ghttp__responder_destructor_f)(struct ghttp__simple_responce*);
 
 struct ghttp__responder {
@@ -38,6 +39,6 @@ struct ghttp__responder {
 };
 
 void ghttp__start_server(struct ghttp__responder* responders, size_t responders_count,
-		struct ghttp__responder* not_found);
+		struct ghttp__responder* not_found, int port);
 
 #endif

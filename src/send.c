@@ -137,6 +137,14 @@ static bool send_data(const void* data, size_t data_size, void** out_data, size_
 static void get_first_line(const char* str, char** out)
 {
 	const char* p = strstr(str, GHTTP__BRBN);
-	*out = ghttp__memmanager->allocator(p - str + 1);
+	if (p == NULL) {
+		*out = ghttp__memmanager->allocator(strlen(str));
+		strcpy(*out, str);
+		return;
+	}
+
+	*out = ghttp__memmanager->allocator(p - str);
 	memcpy(*out, str, p - str);
+
+	(*out)[p - str] = '\0';
 }

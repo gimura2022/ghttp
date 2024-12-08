@@ -135,9 +135,14 @@ static bool parse_responce_meta(struct gstd__strref* str, struct ghttp__responce
 static bool parse_get_request(struct gstd__strref* str, struct ghttp__request* request)
 {
 	request->type = GHTTP__REQUEST_GET;
+
+	const char* p = strstr(str->start, " HTTP/1.");
+	if (p > str->end || p == NULL)
+		return false;
+
 	request->get.url = (struct gstd__strref) {
 		.start = str->start + strlen("GET "),
-		.end   = str->end,
+		.end   = p,
 		.next  = NULL,
 	};
 
