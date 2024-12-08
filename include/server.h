@@ -28,12 +28,13 @@ struct ghttp__simple_responce {
 
 typedef void (*ghttp__responder_process_f)(const struct ghttp__simple_request*,
 		struct ghttp__simple_responce*);
+typedef bool (*ghttp__responder_checker_f)(const char* url);
 typedef void (*ghttp__responder_destructor_f)(struct ghttp__simple_responce*);
 
 struct ghttp__responder {
 	char* url;
-	bool use_regex;
 
+	ghttp__responder_checker_f checker_func;
 	ghttp__responder_process_f process_func;
 	ghttp__responder_destructor_f destructor_func;
 };

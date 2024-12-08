@@ -101,6 +101,17 @@ static void* reciver(struct reciver_args* args)
 	for (int i = 0; i < args->responder_count; i++) {
 		const struct ghttp__responder* responder = &args->responders[i];
 
+		if (responder->checker_func != NULL) {
+			char* url = ghttp__memmanager->allocator(gstd__strref_len(&request.get.url));
+
+			if (responder->checker_func(url)) {
+				match_responder = responder;
+				break;
+			}
+
+			ghttp__memmanager->deallocator(url);
+		}
+
 		struct gstd__strref req_url = gstd__strref_from_str(responder->url);
 		if (gstd__strref_cmp(&req_url, &request.get.url) == 0) {
 			match_responder = responder;
@@ -125,6 +136,7 @@ static void* reciver(struct reciver_args* args)
 
 	send(args->fd, out, out_size, 0);
 
+	match_responder->destructor_func(&simple_responce);
 	ghttp__memmanager->deallocator(out);
 	if (responce.data != NULL)
 		ghttp__memmanager->deallocator((void*) responce.headers.general.content_length.value.start);
