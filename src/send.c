@@ -61,7 +61,7 @@ struct ghttp__responce ghttp__send_request(const struct ghttp__request* request,
 
 	char* line;
 	ghttp__get_first_line(out, &line);
-	glog__infof(ghttp__logger, "to > %s", line);
+	glog__infof(ghttp__logger, "> %s", line);
 	ghttp__memmanager->deallocator(line);
 
 	if (!send_data(out, out_size, &in, &in_size, fd)) {
@@ -72,7 +72,7 @@ struct ghttp__responce ghttp__send_request(const struct ghttp__request* request,
 	*to_free = in;
 
 	ghttp__get_first_line(in, &line);
-	glog__infof(ghttp__logger, "from < %s", line);
+	glog__infof(ghttp__logger, "< %s", line);
 	ghttp__memmanager->deallocator(line);
 
 	if (!ghttp__parse_responce(&(struct gstd__strref) { .start = in, .end = in + in_size, .next = NULL },

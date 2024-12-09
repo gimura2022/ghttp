@@ -93,7 +93,7 @@ static void* reciver(struct reciver_args* args)
 
 	char* line;
 	ghttp__get_first_line(buf, &line);
-	glog__infof(ghttp__logger, "from < %s", line);
+	glog__infof(ghttp__logger, "< %s", line);
 	ghttp__memmanager->deallocator(line);
 
 	const struct ghttp__responder* match_responder = args->not_found;
@@ -131,7 +131,7 @@ static void* reciver(struct reciver_args* args)
 	ghttp__gen_responce(&responce, &out, &out_size);
 
 	ghttp__get_first_line(out, &line);
-	glog__infof(ghttp__logger, "to > %s", line);
+	glog__infof(ghttp__logger, "> %s", line);
 	ghttp__memmanager->deallocator(line);
 
 	send(args->fd, out, out_size, 0);
