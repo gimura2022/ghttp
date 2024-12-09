@@ -83,11 +83,6 @@ static void* reciver(struct reciver_args* args)
 		goto done;		
 	}
 
-	char* line;
-	ghttp__get_first_line(buf, &line);
-	glog__infof(ghttp__logger, "from < %s", line);
-	ghttp__memmanager->deallocator(line);
-
 	struct ghttp__request request = {0};
 	struct gstd__strref buf_strref = (struct gstd__strref) { .start = buf, .end = buf + recv_size,
 		.next = NULL};
@@ -95,6 +90,11 @@ static void* reciver(struct reciver_args* args)
 		glog__error(ghttp__logger, "parsing error");
 		goto done;
 	}
+
+	char* line;
+	ghttp__get_first_line(buf, &line);
+	glog__infof(ghttp__logger, "from < %s", line);
+	ghttp__memmanager->deallocator(line);
 
 	const struct ghttp__responder* match_responder = args->not_found;
 

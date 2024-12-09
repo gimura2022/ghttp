@@ -77,7 +77,7 @@ static bool line_enumerator(const char* str, line_enumerator_f enumerator, void*
 
 	*data_start = NULL;
 
-	return true;
+	return false;
 }
 
 static bool parse_request_meta(struct gstd__strref* str, struct ghttp__request* request);
