@@ -23,6 +23,9 @@ void ghttp__gen_init(void)
 	brbn_sep      = gstd__strref_from_str(brbn_sep_str);
 }
 
+static void add_brbn_sep(struct gstd__strref* str, void** to_free, size_t* to_free_size);
+static void add_semicolon_sep(struct gstd__strref* str, void** to_free, size_t* to_free_size);
+
 static void gen_responce_headers(struct ghttp__responce_headers* headers,
 		struct gstd__strref* str, void** to_free, size_t* to_free_size);
 static void gen_request_headers(struct ghttp__request_headers* headers,
@@ -53,10 +56,7 @@ void ghttp__gen_responce(const struct ghttp__responce* responce, char** buf, siz
 	gen_general_headers((struct ghttp__general_headers*) &responce->headers.general, &str, to_free,
 			&to_free_size);
 
-	to_free[to_free_size] = ghttp__memmanager->allocator(sizeof(struct gstd__strref));
-	*((struct gstd__strref*) to_free[to_free_size]) = brbn_sep;
-	gstd__strref_cat(&str, to_free[to_free_size]);
-	to_free_size++;
+	add_brbn_sep(&str, to_free, &to_free_size);
 
 	if (responce->data != NULL) {
 		gen_data(responce->data, responce->data_size, &str, &data_str);
@@ -91,10 +91,7 @@ void ghttp__gen_request(const struct ghttp__request* request, char** buf, size_t
 	gen_general_headers((struct ghttp__general_headers*) &request->headers.general, &str, to_free,
 			&to_free_size);
 
-	to_free[to_free_size] = ghttp__memmanager->allocator(sizeof(struct gstd__strref));
-	*((struct gstd__strref*) to_free[to_free_size]) = brbn_sep;
-	gstd__strref_cat(&str, to_free[to_free_size]);
-	to_free_size++;
+	add_brbn_sep(&str, to_free, &to_free_size);
 
 	if (request->data != NULL) {
 		gen_data(request->data, request->data_size, &str, &data_str);
@@ -140,18 +137,9 @@ static void gen_header(struct ghttp__header* header, struct gstd__strref* str, v
 		return;
 
 	gstd__strref_cat(str, &header->name);
-
-	to_free[*to_free_size] = ghttp__memmanager->allocator(sizeof(struct gstd__strref));
-	*((struct gstd__strref*) to_free[*to_free_size]) = semicolon_sep;
-	gstd__strref_cat(str, to_free[*to_free_size]);
-	(*to_free_size)++;
-
+	add_semicolon_sep(str, to_free, to_free_size);
 	gstd__strref_cat(str, &header->value);
-
-	to_free[*to_free_size] = ghttp__memmanager->allocator(sizeof(struct gstd__strref));
-	*((struct gstd__strref*) to_free[*to_free_size]) = brbn_sep;
-	gstd__strref_cat(str, to_free[*to_free_size]);
-	(*to_free_size)++;
+	add_brbn_sep(str, to_free, to_free_size);
 }
 
 static void gen_data(const void* data, size_t data_size, struct gstd__strref* str,
@@ -318,4 +306,26 @@ static const char* get_method(int type)
 #	undef case
 
 	return method_undefined;
+}
+
+static void add_strref_copy(struct gstd__strref* str, const struct gstd__strref* src, void** to_free,
+		size_t* to_free_size);
+
+static void add_brbn_sep(struct gstd__strref* str, void** to_free, size_t* to_free_size)
+{
+	add_strref_copy(str, &brbn_sep, to_free, to_free_size);
+}
+
+static void add_semicolon_sep(struct gstd__strref* str, void** to_free, size_t* to_free_size)
+{
+	add_strref_copy(str, &semicolon_sep, to_free, to_free_size);
+}
+
+static void add_strref_copy(struct gstd__strref* str, const struct gstd__strref* src, void** to_free,
+		size_t* to_free_size)
+{
+	to_free[*to_free_size] = ghttp__memmanager->allocator(sizeof(struct gstd__strref));
+	*((struct gstd__strref*) to_free[*to_free_size]) = *src;
+	gstd__strref_cat(str, to_free[*to_free_size]);
+	(*to_free_size)++;
 }

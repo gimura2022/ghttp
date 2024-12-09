@@ -12,6 +12,7 @@
 #include <ghttp/gen.h>
 #include <ghttp/ghttp.h>
 #include <ghttp/parse.h>
+#include <ghttp/utils.h>
 
 #include <glog.h>
 
@@ -20,7 +21,6 @@
 #define RECV_BUFFER_SIZE 64 * 1024
 
 static bool send_data(const void* data, size_t data_size, void** out_data, size_t* out_data_size, int fd);
-static void get_first_line(const char* str, char** out);
 
 struct ghttp__responce ghttp__send_request(const struct ghttp__request* request, const char* ip, int port,
 		void** to_free)
@@ -60,7 +60,7 @@ struct ghttp__responce ghttp__send_request(const struct ghttp__request* request,
 	ghttp__gen_request(request, (char**) &out, &out_size);
 
 	char* line;
-	get_first_line(out, &line);
+	ghttp__get_first_line(out, &line);
 	glog__infof(ghttp__logger, "to > %s", line);
 	ghttp__memmanager->deallocator(line);
 
@@ -71,7 +71,7 @@ struct ghttp__responce ghttp__send_request(const struct ghttp__request* request,
 
 	*to_free = in;
 
-	get_first_line(in, &line);
+	ghttp__get_first_line(in, &line);
 	glog__infof(ghttp__logger, "from < %s", line);
 	ghttp__memmanager->deallocator(line);
 
@@ -97,7 +97,7 @@ struct ghttp__request ghttp__send_responce(const struct ghttp__responce* responc
 	ghttp__gen_responce(responce, (char**) &out, &out_size);
 
 	char* line;
-	get_first_line(out, &line);
+	ghttp__get_first_line(out, &line);
 	glog__infof(ghttp__logger, "to > %s", out);
 	ghttp__memmanager->deallocator(line);
 
@@ -108,7 +108,7 @@ struct ghttp__request ghttp__send_responce(const struct ghttp__responce* responc
 
 	*to_free = in;
 
-	get_first_line(in, &line);
+	ghttp__get_first_line(in, &line);
 	glog__infof(ghttp__logger, "from < %s", in);
 	ghttp__memmanager->deallocator(line);
 
@@ -132,19 +132,4 @@ static bool send_data(const void* data, size_t data_size, void** out_data, size_
 		return false;
 
 	return true;
-}
-
-static void get_first_line(const char* str, char** out)
-{
-	const char* p = strstr(str, GHTTP__BRBN);
-	if (p == NULL) {
-		*out = ghttp__memmanager->allocator(strlen(str));
-		strcpy(*out, str);
-		return;
-	}
-
-	*out = ghttp__memmanager->allocator(p - str);
-	memcpy(*out, str, p - str);
-
-	(*out)[p - str] = '\0';
 }

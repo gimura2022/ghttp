@@ -1,5 +1,3 @@
-#include <ghttp/gen.h>
-#include <gstd/strref.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -9,10 +7,14 @@
 
 #include <glog.h>
 
+#include <gstd/strref.h>
+
 #include <ghttp/ghttp.h>
 #include <ghttp/server.h>
 #include <ghttp/messanges.h>
 #include <ghttp/parse.h>
+#include <ghttp/gen.h>
+#include <ghttp/utils.h>
 
 #define RECV_BUFFER_SIZE 64 * 1024
 #define MAX_NUMBER 128
@@ -68,8 +70,6 @@ void ghttp__start_server(struct ghttp__responder* responders, size_t responders_
 	}
 }
 
-static void get_first_line(const char* str, char** out);
-
 static struct ghttp__simple_request create_simple_request(struct ghttp__request* request);
 static struct ghttp__responce create_responce_from_simple(const struct ghttp__simple_responce* responce);
 
@@ -84,7 +84,7 @@ static void* reciver(struct reciver_args* args)
 	}
 
 	char* line;
-	get_first_line(buf, &line);
+	ghttp__get_first_line(buf, &line);
 	glog__infof(ghttp__logger, "from < %s", line);
 	ghttp__memmanager->deallocator(line);
 
@@ -130,7 +130,7 @@ static void* reciver(struct reciver_args* args)
 	size_t out_size;
 	ghttp__gen_responce(&responce, &out, &out_size);
 
-	get_first_line(out, &line);
+	ghttp__get_first_line(out, &line);
 	glog__infof(ghttp__logger, "to > %s", line);
 	ghttp__memmanager->deallocator(line);
 
@@ -146,21 +146,6 @@ done:
 	close(args->fd);
 
 	return NULL;
-}
-
-static void get_first_line(const char* str, char** out)
-{
-	const char* p = strstr(str, GHTTP__BRBN);
-	if (p == NULL) {
-		*out = ghttp__memmanager->allocator(strlen(str));
-		strcpy(*out, str);
-		return;
-	}
-
-	*out = ghttp__memmanager->allocator(p - str);
-	memcpy(*out, str, p - str);
-
-	(*out)[p - str] = '\0';
 }
 
 static struct ghttp__simple_request create_simple_request(struct ghttp__request* request)
