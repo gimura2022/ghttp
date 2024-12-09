@@ -19,7 +19,7 @@
 #define OUT_SIZE 1024
 
 static const char* out_content_type = "text/html";
-static const char* out_content      = "Hello, world!";
+static const char* out_content      = "Welcome in %s page!";
 static const char* out_not_found    = "Not found!";
 
 static void handler_process(const struct ghttp__simple_request* request,
@@ -27,12 +27,17 @@ static void handler_process(const struct ghttp__simple_request* request,
 {
 	responce->code         = 200;
 	responce->content_type = (char*) out_content_type;
-	responce->data         = (char*) out_content;
-	responce->data_size    = strlen(out_content);
+
+	responce->data = malloc(OUT_SIZE);
+	char url[128] = {0};
+	gstd__str_from_strref(url, &request->url);
+	snprintf(responce->data, OUT_SIZE, out_content, url);
+	responce->data_size = strlen(responce->data);
 }
 
 static void handler_destructor(struct ghttp__simple_responce* responce)
 {
+	free(responce->data);
 }
 
 static void handler_not_found(const struct ghttp__simple_request* request,
@@ -66,7 +71,7 @@ int main(int argv, char* argc[])
 		(struct ghttp__responder) {
 			.url       = "/",
 
-			.checker_func    = NULL,
+			.checker_func    = handler_checker,
 			.process_func    = handler_process,
 			.destructor_func = handler_destructor,
 		},
