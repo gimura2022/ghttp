@@ -86,43 +86,6 @@ done:
 	return responce;
 }
 
-struct ghttp__request ghttp__send_responce(const struct ghttp__responce* responce, int fd, void** to_free)
-{
-	*to_free = NULL;
-
-	struct ghttp__request request = {0};
-
-	void *out, *in;
-	size_t out_size, in_size;
-	ghttp__gen_responce(responce, (char**) &out, &out_size);
-
-	char* line;
-	ghttp__get_first_line(out, &line);
-	glog__infof(ghttp__logger, "to > %s", out);
-	ghttp__memmanager->deallocator(line);
-
-	if (!send_data(out, out_size, &in, &in_size, fd)) {
-		glog__error(ghttp__logger, "sending/reciving error");
-		goto done;
-	}
-
-	*to_free = in;
-
-	ghttp__get_first_line(in, &line);
-	glog__infof(ghttp__logger, "from < %s", in);
-	ghttp__memmanager->deallocator(line);
-
-	if (!ghttp__parse_request(&(struct gstd__strref) { .start = in, .end = in + in_size, .next = NULL },
-			&request)) {
-		glog__error(ghttp__logger, "request syntax error");
-		goto done;
-	}
-
-done:
-	ghttp__memmanager->deallocator(out);
-	return request;
-}
-
 static bool send_data(const void* data, size_t data_size, void** out_data, size_t* out_data_size, int fd)
 {
 	send(fd, data, data_size, 0);
