@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -17,10 +18,15 @@ static const char* brbn_sep_str      = GHTTP__BRBN;
 static struct gstd__strref semicolon_sep;
 static struct gstd__strref brbn_sep;
 
-void ghttp__gen_init(void)
+static void init(void)
 {
+	static bool is_inited = false;
+	if (is_inited) return;
+
 	semicolon_sep = gstd__strref_from_str(semicolon_sep_str);
 	brbn_sep      = gstd__strref_from_str(brbn_sep_str);
+
+	is_inited = true;
 }
 
 static void add_brbn_sep(struct gstd__strref* str, void** to_free, size_t* to_free_size);
@@ -40,6 +46,8 @@ static const char* get_responce_message_by_code(int code);
 
 void ghttp__gen_responce(const struct ghttp__responce* responce, char** buf, size_t* out_size)
 {
+	init();	
+
 	struct gstd__strref str, data_str;
 
 	void* to_free[MAX_TO_FREE_MAX] = {NULL};
@@ -74,6 +82,8 @@ static const char* get_method(int type);
 
 void ghttp__gen_request(const struct ghttp__request* request, char** buf, size_t* out_size)
 {
+	init();
+
 	struct gstd__strref str, data_str;
 
 	void* to_free[MAX_TO_FREE_MAX] = {NULL};

@@ -8,6 +8,4 @@ void ghttp__init(struct gstd__memmanager* memmanager, struct glog__logger* logge
 {
 	ghttp__memmanager = memmanager;
 	ghttp__logger     = logger;
-
-	ghttp__gen_init();
 }
