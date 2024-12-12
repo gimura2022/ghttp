@@ -1,6 +1,0 @@
-[submodule "libglog"]
-	path = libglog
-	url = git@github.com:gimura2022/libglog.git
-[submodule "libgstd"]
-	path = libgstd
-	url = git@github.com:gimura2022/libgstd.git
