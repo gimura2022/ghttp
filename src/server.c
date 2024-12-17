@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -6,8 +7,8 @@
 #include <netinet/in.h>
 
 #include <glog.h>
-
 #include <gstd/strref.h>
+#include <gserver/gserver.h>
 
 #include <ghttp/ghttp.h>
 #include <ghttp/server.h>
@@ -20,65 +21,53 @@
 #define MAX_NUMBER 128
 
 struct reciver_args {
-	int fd;
-
 	struct ghttp__responder* responders;
 	size_t responder_count;
 
 	struct ghttp__responder* not_found;
 };
 
-static void* reciver(struct reciver_args* args);
+static int reciver(const struct gserver__reciver_args* args);
+
+static struct glog__logger gserver_logger;
+
+static void init(void)
+{
+	static bool is_inited = false;
+	if (is_inited) return;
+
+	gserver_logger        = *ghttp__logger;
+	gserver_logger.prefix = "gserver";
+	gserver__init(&gserver_logger, ghttp__memmanager);
+
+	is_inited = true;
+}
 
 void ghttp__start_server(struct ghttp__responder* responders, size_t responders_count,
 		struct ghttp__responder* not_found, int port)
 {
-	glog__debug(ghttp__logger, "starting server");
+	init();
 
-	int server_fd;
-	struct sockaddr_in address;
+	struct reciver_args args = {
+		.not_found       = not_found,
+		.responder_count = responders_count,
+		.responders      = responders,
+	};
 
-	if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-		glog__die(ghttp__logger, "socket faled");
-
-	address.sin_family = AF_INET;
-	address.sin_addr.s_addr = INADDR_ANY;
-	address.sin_port = htons(port);
-
-	if (bind(server_fd, (struct sockaddr*) &address, sizeof(address)) < 0)
-		glog__die(ghttp__logger, "bind faled");
-
-	if (listen(server_fd, 3) < 0)
-		glog__die(ghttp__logger, "listen faled");
-
-	while (true) {
-		struct sockaddr_in client_addr;
-		socklen_t client_addr_len = sizeof(client_addr);
-
-		struct reciver_args* recv_args = ghttp__memmanager->allocator(sizeof(struct reciver_args));
-		
-		if ((recv_args->fd = accept(server_fd, (struct sockaddr*) &client_addr,
-						&client_addr_len)) < 0) continue; 
-
-		recv_args->responders      = responders;
-		recv_args->responder_count = responders_count;
-		recv_args->not_found       = not_found;
-
-		pthread_t thread_id;
-		pthread_create(&thread_id, NULL, (void *(*)(void*)) reciver, (void*) recv_args);
-		pthread_detach(thread_id);
-	}
+	gserver__start_server(reciver, &args, port);
 }
 
 static struct ghttp__simple_request create_simple_request(struct ghttp__request* request);
 static struct ghttp__responce create_responce_from_simple(const struct ghttp__simple_responce* responce);
 
-static void* reciver(struct reciver_args* args)
+static int reciver(const struct gserver__reciver_args* recv_args)
 {
+	struct reciver_args* args = recv_args->custom_data;
+
 	void* buf = ghttp__memmanager->allocator(RECV_BUFFER_SIZE);
 
 	size_t recv_size;
-	if ((recv_size = recv(args->fd, buf, RECV_BUFFER_SIZE, 0) < 0)) {
+	if ((recv_size = recv(recv_args->fd, buf, RECV_BUFFER_SIZE, 0) < 0)) {
 		glog__error(ghttp__logger, "recive error");
 		goto done;		
 	}
@@ -134,7 +123,7 @@ static void* reciver(struct reciver_args* args)
 	glog__infof(ghttp__logger, "> %s", line);
 	ghttp__memmanager->deallocator(line);
 
-	send(args->fd, out, out_size, 0);
+	send(recv_args->fd, out, out_size, 0);
 
 	match_responder->destructor_func(&simple_responce);
 	ghttp__memmanager->deallocator(out);
@@ -143,9 +132,9 @@ static void* reciver(struct reciver_args* args)
 
 done:
 	ghttp__memmanager->deallocator(buf);
-	close(args->fd);
+	close(recv_args->fd);
 
-	return NULL;
+	return 0;
 }
 
 static struct ghttp__simple_request create_simple_request(struct ghttp__request* request)
